@@ -1,7 +1,7 @@
-// src/components/TeamInviteForm.jsx - Updated for global collection
+// src/components/TeamInviteForm.jsx - FIXED VERSION
 import { useState } from "react";
 import { db } from "../lib/firebase";
-import { collection, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 
 export default function TeamInviteForm({ teamId, teamName, role }) {
@@ -28,36 +28,109 @@ export default function TeamInviteForm({ teamId, teamName, role }) {
     setLoading(true);
 
     try {
-      // Generate unique invite ID
-      const inviteId = `${teamId}_${Date.now()}_${Math.random()
-        .toString(36)
-        .substr(2, 9)}`;
-
-      // Create invite in global collection
-      await setDoc(doc(db, "team-invites", inviteId), {
-        teamId: teamId,
+      // ✅ FIXED: Use consistent subcollection structure like other components
+      await addDoc(collection(db, "teams", teamId, "invites"), {
+        teamId: teamId, // Store teamId for easier querying
         teamName: teamName,
         email: email.trim().toLowerCase(),
         role: inviteRole,
-        inviterUid: user.uid,
+        invitedBy: user.uid,
         inviterName: user.displayName || user.email,
         createdAt: serverTimestamp(),
         status: "pending",
       });
 
+      // ✅ Optional: Try to send email, but don't fail if unavailable
+      try {
+        const inviteLink = `${
+          window.location.origin
+        }/join?teamId=${teamId}&inviteId=${Date.now()}`;
+
+        const response = await fetch("/api/send-invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: email.trim(),
+            link: inviteLink,
+            teamName,
+            invitedBy: user.displayName || user.email,
+            role: inviteRole,
+          }),
+        });
+
+        if (!response.ok) {
+          console.warn(
+            "Email sending failed, but invite was saved to database"
+          );
+        }
+      } catch (emailError) {
+        console.warn(
+          "Email service unavailable, but invite was saved:",
+          emailError.message
+        );
+        // Don't throw error - invite was still created successfully
+      }
+
       setEmail("");
       setInviteRole("member");
-      alert(`Invite sent to ${email.trim()}!`);
+
+      // Show success message
+      showNotification(`Invite sent to ${email.trim()}!`, "success");
     } catch (err) {
       console.error("Error sending invite:", err);
+
+      let errorMessage = "Failed to send invite: ";
       if (err.code === "permission-denied") {
-        alert("You don't have permission to send invites for this team.");
+        errorMessage +=
+          "You don't have permission to send invites for this team.";
+      } else if (err.code === "invalid-argument") {
+        errorMessage += "Invalid email address or team data.";
       } else {
-        alert("Failed to send invite: " + (err.message || "Unknown error"));
+        errorMessage += err.message || "Unknown error";
       }
+
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
+  }
+
+  // Helper function for notifications
+  function showNotification(message, type = "info") {
+    const notification = document.createElement("div");
+
+    const icons = {
+      success: "✅",
+      error: "❌",
+      info: "ℹ️",
+    };
+
+    notification.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span>${icons[type]}</span>
+        <span>${message}</span>
+      </div>
+    `;
+
+    notification.className =
+      "fixed top-4 right-4 glass-card px-4 py-3 rounded-lg z-50 text-sm transition-opacity duration-300";
+    notification.style.cssText = `
+      background-color: var(--card);
+      color: var(--foreground);
+      border: 1px solid var(--${type === "error" ? "destructive" : "primary"});
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    `;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.style.opacity = "0";
+      setTimeout(() => {
+        if (notification.parentNode) {
+          document.body.removeChild(notification);
+        }
+      }, 300);
+    }, 4000);
   }
 
   // Only owner/admin can invite
@@ -65,73 +138,147 @@ export default function TeamInviteForm({ teamId, teamName, role }) {
     return null;
   }
 
-  return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border mt-8">
-      <h3 className="text-lg font-semibold mb-4 text-gray-800">
-        Invite Member to {teamName}
-      </h3>
+  const roleOptions = [
+    {
+      value: "member",
+      label: "Member",
+      description: "Can create and manage their own prompts",
+      icon: "👤",
+    },
+    {
+      value: "admin",
+      label: "Admin",
+      description: "Can manage team members and all prompts",
+      icon: "👑",
+    },
+  ];
 
-      <form onSubmit={handleInvite} className="space-y-4">
+  return (
+    <div
+      className="glass-card p-6 mt-8"
+      style={{ border: "1px solid var(--border)" }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <div
+          className="w-10 h-10 rounded-lg flex items-center justify-center"
+          style={{ backgroundColor: "var(--primary)" }}
+        >
+          <span style={{ color: "var(--primary-foreground)" }}>👥</span>
+        </div>
         <div>
+          <h3
+            className="text-lg font-semibold"
+            style={{ color: "var(--foreground)" }}
+          >
+            Invite Team Member
+          </h3>
+          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+            Add a new member to <strong>{teamName}</strong>
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleInvite} className="space-y-6">
+        {/* Email Input */}
+        <div className="space-y-2">
           <label
             htmlFor="invite-email"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium"
+            style={{ color: "var(--foreground)" }}
           >
             Email Address *
           </label>
           <input
             id="invite-email"
             type="email"
-            placeholder="Enter email address"
-            className="form-input w-full"
+            placeholder="colleague@company.com"
+            className="form-input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={loading}
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
             They'll receive an invitation to join your team
           </p>
         </div>
 
-        <div>
+        {/* Role Selection */}
+        <div className="space-y-3">
           <label
-            htmlFor="invite-role"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium"
+            style={{ color: "var(--foreground)" }}
           >
-            Role
+            Role & Permissions
           </label>
-          <select
-            id="invite-role"
-            className="form-input w-full"
-            value={inviteRole}
-            onChange={(e) => setInviteRole(e.target.value)}
-            disabled={loading}
-          >
-            <option value="member">
-              Member - Can create and manage own prompts
-            </option>
-            <option value="admin">
-              Admin - Can manage team members and all prompts
-            </option>
-          </select>
+          <div className="grid gap-3">
+            {roleOptions.map((option) => (
+              <label
+                key={option.value}
+                className={`relative flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+                  inviteRole === option.value
+                    ? "border-primary"
+                    : "border-border hover:border-primary/50"
+                }`}
+                style={{
+                  borderColor:
+                    inviteRole === option.value
+                      ? "var(--primary)"
+                      : "var(--border)",
+                  backgroundColor:
+                    inviteRole === option.value
+                      ? "var(--secondary)"
+                      : "transparent",
+                }}
+              >
+                <input
+                  type="radio"
+                  value={option.value}
+                  checked={inviteRole === option.value}
+                  onChange={(e) => setInviteRole(e.target.value)}
+                  className="mt-1 w-4 h-4"
+                  style={{ accentColor: "var(--primary)" }}
+                  disabled={loading}
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{option.icon}</span>
+                    <span
+                      className="font-medium"
+                      style={{ color: "var(--foreground)" }}
+                    >
+                      {option.label}
+                    </span>
+                  </div>
+                  <p
+                    className="text-sm"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
+                    {option.description}
+                  </p>
+                </div>
+              </label>
+            ))}
+          </div>
         </div>
 
+        {/* Action Buttons */}
         <div className="flex gap-3 pt-2">
           <button
             type="submit"
             disabled={loading || !email.trim()}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary px-6 py-2.5 flex items-center gap-2"
           >
-            {loading && <div className="spinner"></div>}
-            {loading ? "Sending..." : "Send Invite"}
+            {loading && <div className="neo-spinner w-4 h-4"></div>}
+            <span>{loading ? "Sending Invite..." : "Send Invitation"}</span>
           </button>
 
           {email && !loading && (
             <button
               type="button"
               onClick={() => setEmail("")}
-              className="text-gray-600 hover:text-gray-800 px-3 py-2 rounded transition-colors"
+              className="btn-secondary px-4 py-2.5"
             >
               Clear
             </button>
@@ -139,19 +286,31 @@ export default function TeamInviteForm({ teamId, teamName, role }) {
         </div>
       </form>
 
-      <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-        <h4 className="font-medium text-blue-800 mb-2">Role Permissions:</h4>
-        <div className="text-sm text-blue-700 space-y-1">
+      {/* Info Section */}
+      <div
+        className="mt-6 p-4 rounded-lg border"
+        style={{
+          backgroundColor: "var(--muted)",
+          borderColor: "var(--border)",
+        }}
+      >
+        <h4 className="font-medium mb-3" style={{ color: "var(--foreground)" }}>
+          ℹ️ How Invites Work:
+        </h4>
+        <div
+          className="space-y-2 text-sm"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          <div>• Invitations are saved immediately to the database</div>
           <div>
-            <strong>Member:</strong> Can create, edit, and delete their own
-            prompts
+            • Users will see pending invites when they sign in with the invited
+            email
           </div>
           <div>
-            <strong>Admin:</strong> Can manage all prompts and invite new
-            members
+            • Email notifications are sent if the email service is configured
           </div>
           <div>
-            <strong>Owner:</strong> Can delete the team and change member roles
+            • Invites can be accepted or declined from the user's invite panel
           </div>
         </div>
       </div>

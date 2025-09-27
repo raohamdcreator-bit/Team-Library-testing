@@ -1,24 +1,34 @@
 // src/hooks/useCache.js
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 
-// Simple in-memory cache with TTL support
+// Enhanced cache with LRU eviction and better memory management
 class Cache {
-  constructor() {
+  constructor(maxSize = 100, defaultTTL = 300000) {
     this.data = new Map();
     this.timers = new Map();
+    this.accessOrder = new Map(); // For LRU tracking
+    this.maxSize = maxSize;
+    this.defaultTTL = defaultTTL;
   }
 
-  set(key, value, ttl = 300000) { // Default 5 minutes TTL
-    // Clear existing timer
+  set(key, value, ttl = this.defaultTTL) {
+    // Clear existing timer and access order
     if (this.timers.has(key)) {
       clearTimeout(this.timers.get(key));
     }
 
-    // Set data
+    // Evict LRU items if cache is full
+    if (this.data.size >= this.maxSize && !this.data.has(key)) {
+      this._evictLRU();
+    }
+
+    // Set data and access time
     this.data.set(key, {
       value,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      hits: 0
     });
+    this.accessOrder.set(key, Date.now());
 
     // Set expiration timer
     if (ttl > 0) {
@@ -31,7 +41,13 @@ class Cache {
 
   get(key) {
     const item = this.data.get(key);
-    return item ? item.value : undefined;
+    if (!item) return undefined;
+
+    // Update access time and hit count
+    item.hits++;
+    this.accessOrder.set(key, Date.now());
+
+    return item.value;
   }
 
   has(key) {
@@ -44,26 +60,43 @@ class Cache {
       this.timers.delete(key);
     }
     this.data.delete(key);
+    this.accessOrder.delete(key);
   }
 
   clear() {
     this.timers.forEach(timer => clearTimeout(timer));
     this.timers.clear();
     this.data.clear();
+    this.accessOrder.clear();
+  }
+
+  _evictLRU() {
+    if (this.accessOrder.size === 0) return;
+
+    // Find least recently used item
+    const entries = Array.from(this.accessOrder.entries());
+    entries.sort((a, b) => a[1] - b[1]);
+
+    // Remove oldest item
+    const keyToEvict = entries[0][0];
+    this.delete(keyToEvict);
   }
 
   size() {
     return this.data.size;
   }
 
-  // Get cache stats
+  // Enhanced stats with memory estimation
   getStats() {
     const now = Date.now();
     let totalSize = 0;
     let oldestTimestamp = now;
+    let totalHits = 0;
 
     this.data.forEach(item => {
-      totalSize += JSON.stringify(item.value).length;
+      // Rough size estimation
+      totalSize += JSON.stringify(item.value).length * 2; // *2 for UTF-16
+      totalHits += item.hits;
       if (item.timestamp < oldestTimestamp) {
         oldestTimestamp = item.timestamp;
       }
@@ -71,36 +104,70 @@ class Cache {
 
     return {
       entries: this.data.size,
-      totalSize,
-      oldestEntry: now - oldestTimestamp
+      maxSize: this.maxSize,
+      totalSizeBytes: totalSize,
+      oldestEntryAge: now - oldestTimestamp,
+      totalHits,
+      hitRate: totalHits > 0 ? totalHits / this.data.size : 0,
+      memoryUsage: `${(totalSize / 1024).toFixed(2)} KB`
     };
+  }
+
+  // Get cache keys by pattern
+  getKeysByPattern(pattern) {
+    const regex = new RegExp(pattern);
+    return Array.from(this.data.keys()).filter(key => regex.test(key));
   }
 }
 
-// Global cache instance
-const globalCache = new Cache();
+// Global cache instance with increased limits
+const globalCache = new Cache(200, 600000); // 200 items, 10 minutes TTL
 
-// Hook for caching data
+// Enhanced cache hook with more options
 export function useCache(key, fetcher, options = {}) {
   const {
-    ttl = 300000, // 5 minutes default
+    ttl = 600000, // 10 minutes default
     enabled = true,
     onError,
-    staleWhileRevalidate = false
+    staleWhileRevalidate = false,
+    retryOnError = true,
+    maxRetries = 3,
+    retryDelay = 1000,
+    background = false // For background refreshing
   } = options;
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isStale, setIsStale] = useState(false);
+
   const fetcherRef = useRef(fetcher);
-  
+  const retryCountRef = useRef(0);
+  const abortControllerRef = useRef(null);
+  const backgroundTimerRef = useRef(null);
+
   // Update fetcher ref when it changes
   useEffect(() => {
     fetcherRef.current = fetcher;
   }, [fetcher]);
 
-  // Fetch data function
-  const fetchData = async (forceRefresh = false) => {
+  // Background refresh for long-lived data
+  useEffect(() => {
+    if (background && ttl > 0 && data) {
+      backgroundTimerRef.current = setTimeout(() => {
+        fetchData(false, true); // Silent background refresh
+      }, ttl * 0.8); // Refresh at 80% of TTL
+    }
+
+    return () => {
+      if (backgroundTimerRef.current) {
+        clearTimeout(backgroundTimerRef.current);
+      }
+    };
+  }, [data, background, ttl]);
+
+  // Enhanced fetch function
+  const fetchData = useCallback(async (forceRefresh = false, isBackground = false) => {
     if (!enabled || !key) return;
 
     // Check cache first (unless forcing refresh)
@@ -108,159 +175,278 @@ export function useCache(key, fetcher, options = {}) {
       const cachedData = globalCache.get(key);
       setData(cachedData);
       setError(null);
+      setIsStale(false);
       return cachedData;
     }
 
-    setLoading(true);
+    // Don't show loading for background refreshes
+    if (!isBackground) {
+      setLoading(true);
+    }
     setError(null);
 
+    // Abort previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     try {
-      const result = await fetcherRef.current();
-      
+      const result = await fetcherRef.current(abortControllerRef.current.signal);
+
       // Cache the result
       globalCache.set(key, result, ttl);
       setData(result);
-      
+      setError(null);
+      setIsStale(false);
+      retryCountRef.current = 0;
+
       return result;
     } catch (err) {
+      if (err.name === 'AbortError') return;
+
+      console.error(`Cache fetch error for key ${key}:`, err);
+
+      // Retry logic
+      if (retryOnError && retryCountRef.current < maxRetries) {
+        retryCountRef.current++;
+        setTimeout(() => {
+          fetchData(forceRefresh, isBackground);
+        }, retryDelay * retryCountRef.current);
+        return;
+      }
+
       setError(err);
       if (onError) onError(err);
-      
-      // If stale-while-revalidate and we have cached data, keep using it
+
+      // Return stale data if available and staleWhileRevalidate is enabled
       if (staleWhileRevalidate && globalCache.has(key)) {
         const staleData = globalCache.get(key);
         setData(staleData);
+        setIsStale(true);
         return staleData;
       }
-      
-      throw err;
     } finally {
-      setLoading(false);
+      if (!isBackground) {
+        setLoading(false);
+      }
     }
-  };
+  }, [key, enabled, ttl, staleWhileRevalidate, retryOnError, maxRetries, retryDelay, onError]);
 
   // Initial fetch
   useEffect(() => {
     fetchData();
-  }, [key, enabled]);
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      if (backgroundTimerRef.current) {
+        clearTimeout(backgroundTimerRef.current);
+      }
+    };
+  }, [fetchData]);
 
   // Manual refresh
-  const refresh = () => fetchData(true);
-  
+  const refresh = useCallback(() => {
+    return fetchData(true);
+  }, [fetchData]);
+
   // Clear cache for this key
-  const clearCache = () => {
+  const invalidate = useCallback(() => {
     globalCache.delete(key);
     setData(null);
-  };
+    setError(null);
+    setIsStale(false);
+  }, [key]);
+
+  // Prefetch data into cache
+  const prefetch = useCallback(async () => {
+    if (!globalCache.has(key)) {
+      await fetchData();
+    }
+  }, [key, fetchData]);
 
   return {
     data,
     loading,
     error,
+    isStale,
     refresh,
-    clearCache,
-    isStale: false // Could be enhanced to track staleness
+    invalidate,
+    prefetch,
+    cacheHit: globalCache.has(key)
   };
 }
 
-// Hook for debounced values (performance optimization for search)
-export function useDebounce(value, delay = 500) {
+// Enhanced debounce hook with immediate execution option
+export function useDebounce(value, delay = 500, immediate = false) {
   const [debouncedValue, setDebouncedValue] = useState(value);
+  const timeoutRef = useRef(null);
+  const immediateRef = useRef(immediate);
 
   useEffect(() => {
-    const handler = setTimeout(() => {
+    // Execute immediately on first call if immediate is true
+    if (immediate && !immediateRef.current) {
       setDebouncedValue(value);
-    }, delay);
+      immediateRef.current = true;
+      return;
+    }
+
+    const handler = () => setDebouncedValue(value);
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(handler, delay);
 
     return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-// Hook for throttled function calls
-export function useThrottle(callback, delay = 1000) {
-  const lastRun = useRef(Date.now());
-
-  return useMemo(() => {
-    return (...args) => {
-      if (Date.now() - lastRun.current >= delay) {
-        callback(...args);
-        lastRun.current = Date.now();
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
     };
-  }, [callback, delay]);
+  }, [value, delay, immediate]);
+
+  // Flush function to execute immediately
+  const flush = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      setDebouncedValue(value);
+    }
+  }, [value]);
+
+  // Cancel function to prevent execution
+  const cancel = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+  }, []);
+
+  return [debouncedValue, { flush, cancel }];
 }
 
-// Hook for virtual scrolling (for large lists)
-export function useVirtualScroll(items, itemHeight = 60, containerHeight = 400) {
+// Enhanced throttle hook with leading/trailing options
+export function useThrottle(callback, delay = 1000, options = {}) {
+  const { leading = true, trailing = true } = options;
+  const lastRun = useRef(Date.now());
+  const timeoutRef = useRef(null);
+  const callbackRef = useRef(callback);
+
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+
+  return useCallback((...args) => {
+    const now = Date.now();
+    const timeSinceLastRun = now - lastRun.current;
+
+    const runCallback = () => {
+      callbackRef.current(...args);
+      lastRun.current = Date.now();
+    };
+
+    if (timeSinceLastRun >= delay) {
+      if (leading) {
+        runCallback();
+      }
+    } else {
+      if (trailing) {
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+
+        timeoutRef.current = setTimeout(() => {
+          runCallback();
+        }, delay - timeSinceLastRun);
+      }
+    }
+  }, [delay, leading, trailing]);
+}
+
+// Virtual scrolling hook for performance with large lists
+export function useVirtualScroll(items, itemHeight = 60, containerHeight = 400, overscan = 5) {
   const [scrollTop, setScrollTop] = useState(0);
   const [containerRef, setContainerRef] = useState(null);
 
-  const visibleRange = useMemo(() => {
-    if (!items.length) return { start: 0, end: 0, visibleItems: [] };
+  const virtualData = useMemo(() => {
+    if (!items.length) return {
+      visibleItems: [],
+      totalHeight: 0,
+      offsetY: 0,
+      startIndex: 0,
+      endIndex: 0
+    };
 
-    const start = Math.floor(scrollTop / itemHeight);
-    const visibleCount = Math.ceil(containerHeight / itemHeight);
-    const end = Math.min(start + visibleCount + 1, items.length);
+    const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
+    const endIndex = Math.min(
+      items.length,
+      startIndex + Math.ceil(containerHeight / itemHeight) + overscan * 2
+    );
+
+    const visibleItems = items.slice(startIndex, endIndex).map((item, index) => ({
+      ...item,
+      virtualIndex: startIndex + index,
+      top: (startIndex + index) * itemHeight
+    }));
 
     return {
-      start,
-      end,
-      visibleItems: items.slice(start, end)
+      visibleItems,
+      totalHeight: items.length * itemHeight,
+      offsetY: startIndex * itemHeight,
+      startIndex,
+      endIndex
     };
-  }, [items, scrollTop, itemHeight, containerHeight]);
+  }, [items, scrollTop, itemHeight, containerHeight, overscan]);
 
-  const totalHeight = items.length * itemHeight;
-  const offsetY = visibleRange.start * itemHeight;
-
-  const handleScroll = (e) => {
+  const handleScroll = useCallback((e) => {
     setScrollTop(e.target.scrollTop);
-  };
+  }, []);
 
   return {
     containerRef: setContainerRef,
-    visibleItems: visibleRange.visibleItems,
-    totalHeight,
-    offsetY,
-    handleScroll,
-    visibleRange
+    ...virtualData,
+    handleScroll
   };
 }
 
-// Hook for intersection observer (lazy loading)
+// Intersection Observer hook for lazy loading
 export function useIntersectionObserver(options = {}) {
   const [entry, setEntry] = useState(null);
   const [node, setNode] = useState(null);
-
   const observer = useRef(null);
+
+  const defaultOptions = {
+    threshold: 0.1,
+    rootMargin: '50px',
+    ...options
+  };
 
   useEffect(() => {
     if (observer.current) observer.current.disconnect();
 
     observer.current = new IntersectionObserver(([entry]) => {
       setEntry(entry);
-    }, options);
+    }, defaultOptions);
 
     if (node) observer.current.observe(node);
 
     return () => {
       if (observer.current) observer.current.disconnect();
     };
-  }, [node, options]);
+  }, [node, defaultOptions.threshold, defaultOptions.rootMargin]);
 
   return [setNode, entry];
 }
 
 // Performance monitoring hook
-export function usePerformanceMonitor(name) {
+export function usePerformanceMonitor(name, threshold = 16) {
   const startTime = useRef(null);
   const [metrics, setMetrics] = useState({
     renderTime: 0,
     renderCount: 0,
-    averageRenderTime: 0
+    averageRenderTime: 0,
+    slowRenders: 0
   });
 
   useEffect(() => {
@@ -271,21 +457,23 @@ export function usePerformanceMonitor(name) {
     const endTime = performance.now();
     if (startTime.current) {
       const renderTime = endTime - startTime.current;
-      
+
       setMetrics(prev => {
         const newRenderCount = prev.renderCount + 1;
         const totalTime = (prev.averageRenderTime * prev.renderCount) + renderTime;
-        
+        const slowRenders = renderTime > threshold ? prev.slowRenders + 1 : prev.slowRenders;
+
         return {
           renderTime,
           renderCount: newRenderCount,
-          averageRenderTime: totalTime / newRenderCount
+          averageRenderTime: totalTime / newRenderCount,
+          slowRenders
         };
       });
 
       // Log slow renders in development
-      if (process.env.NODE_ENV === 'development' && renderTime > 16) {
-        console.warn(`Slow render detected in ${name}: ${renderTime.toFixed(2)}ms`);
+      if (process.env.NODE_ENV === 'development' && renderTime > threshold) {
+        console.warn(`Slow render in ${name}: ${renderTime.toFixed(2)}ms (threshold: ${threshold}ms)`);
       }
     }
   });
@@ -293,18 +481,23 @@ export function usePerformanceMonitor(name) {
   return metrics;
 }
 
-// Memory usage hook (for development)
+// Memory monitoring hook
 export function useMemoryMonitor() {
   const [memoryInfo, setMemoryInfo] = useState(null);
 
   useEffect(() => {
-    if (!performance.memory) return;
+    if (!performance.memory) {
+      console.warn('Memory API not available in this browser');
+      return;
+    }
 
     const updateMemoryInfo = () => {
       setMemoryInfo({
         usedJSHeapSize: performance.memory.usedJSHeapSize,
         totalJSHeapSize: performance.memory.totalJSHeapSize,
-        jsHeapSizeLimit: performance.memory.jsHeapSizeLimit
+        jsHeapSizeLimit: performance.memory.jsHeapSizeLimit,
+        usageMB: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024),
+        usagePercent: Math.round((performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit) * 100)
       });
     };
 
@@ -317,9 +510,9 @@ export function useMemoryMonitor() {
   return memoryInfo;
 }
 
-// Cache management utilities
+// Enhanced cache management utilities
 export const CacheUtils = {
-  // Get global cache stats
+  // Get comprehensive cache stats
   getStats() {
     return globalCache.getStats();
   },
@@ -331,16 +524,48 @@ export const CacheUtils = {
 
   // Clear cache by pattern
   clearByPattern(pattern) {
-    const keys = Array.from(globalCache.data.keys());
-    keys.forEach(key => {
-      if (key.includes(pattern)) {
-        globalCache.delete(key);
-      }
-    });
+    const keys = globalCache.getKeysByPattern(pattern);
+    keys.forEach(key => globalCache.delete(key));
+    return keys.length;
   },
 
   // Preload data into cache
   preload(key, data, ttl) {
     globalCache.set(key, data, ttl);
+  },
+
+  // Get cache hit ratio
+  getHitRatio() {
+    const stats = globalCache.getStats();
+    return stats.hitRate;
+  },
+
+  // Get memory usage
+  getMemoryUsage() {
+    const stats = globalCache.getStats();
+    return {
+      size: stats.totalSizeBytes,
+      readable: stats.memoryUsage
+    };
+  },
+
+  // Warm up cache with multiple keys
+  async warmUp(keyDataPairs) {
+    const promises = keyDataPairs.map(([key, data, ttl]) => {
+      globalCache.set(key, data, ttl);
+      return Promise.resolve();
+    });
+    return Promise.all(promises);
+  },
+
+  // Export cache for debugging
+  exportCache() {
+    if (process.env.NODE_ENV !== 'development') return null;
+
+    const exported = {};
+    globalCache.data.forEach((value, key) => {
+      exported[key] = value;
+    });
+    return exported;
   }
 };

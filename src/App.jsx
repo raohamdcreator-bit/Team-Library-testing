@@ -1,4 +1,4 @@
-// src/App.jsx
+// src/App.jsx - Complete version updated to match demo AI interface
 import { useEffect, useState } from "react";
 import { db } from "./lib/firebase";
 import {
@@ -22,6 +22,320 @@ import FavoritesList from "./components/Favorites";
 import { TeamAnalytics } from "./components/PromptAnalytics";
 import ActivityFeed from "./components/ActivityFeed";
 
+// Enhanced Sign In Component - matching demo style
+const SignInScreen = ({ onSignIn }) => (
+  <div className="min-h-screen" style={{ background: "var(--background)" }}>
+    {/* Navigation matching demo */}
+    <nav
+      className="border-b"
+      style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
+    >
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: "var(--primary)" }}
+            >
+              <span
+                className="text-xl"
+                style={{ color: "var(--primary-foreground)" }}
+              >
+                🤖
+              </span>
+            </div>
+            <span
+              className="text-xl font-bold"
+              style={{ color: "var(--foreground)" }}
+            >
+              Prompt Teams
+            </span>
+          </div>
+          <div className="hidden md:flex items-center gap-6">
+            <a
+              href="#"
+              className="transition-colors"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              Platform
+            </a>
+            <a
+              href="#"
+              className="transition-colors"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              Features
+            </a>
+            <a
+              href="#"
+              className="transition-colors"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              Teams
+            </a>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onSignIn}
+              className="btn-primary ai-glow px-6 py-2"
+            >
+              Sign in with Google
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    {/* Hero Section matching demo */}
+    <section className="container mx-auto px-4 py-20 text-center">
+      <div className="max-w-4xl mx-auto">
+        <div
+          className="mb-6 inline-flex items-center gap-2 px-3 py-1 rounded-full border"
+          style={{
+            backgroundColor: "var(--secondary)",
+            color: "var(--primary)",
+            borderColor: "var(--border)",
+          }}
+        >
+          <span className="text-sm">⚡</span>
+          <span className="text-sm font-medium">
+            AI-Powered Prompt Collaboration
+          </span>
+        </div>
+
+        <h1
+          className="text-5xl md:text-7xl font-bold mb-6"
+          style={{ color: "var(--foreground)" }}
+        >
+          Build Better Prompts with{" "}
+          <span style={{ color: "var(--primary)" }}>Your Team</span>
+        </h1>
+
+        <p
+          className="text-xl mb-8 max-w-2xl mx-auto leading-relaxed"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          Collaborate on AI prompts with your team. Store, share, and discover
+          the best prompts for your projects with advanced neural interface
+          design.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+          <button
+            onClick={onSignIn}
+            className="btn-primary ai-glow px-8 py-3 text-lg font-medium"
+          >
+            <span className="mr-2">⚡</span>
+            Get Started
+          </button>
+          <button className="btn-secondary px-8 py-3 text-lg font-medium ai-pulse-border">
+            <span className="mr-2">▶</span>
+            View Demo
+          </button>
+        </div>
+
+        <div
+          className="flex items-center justify-center gap-2 text-sm"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          <span>Free forever • No credit card required</span>
+        </div>
+      </div>
+    </section>
+
+    {/* Features Grid matching demo */}
+    <section className="container mx-auto px-4 py-20">
+      <div className="text-center mb-16">
+        <h2
+          className="text-3xl md:text-4xl font-bold mb-4"
+          style={{ color: "var(--foreground)" }}
+        >
+          Everything you need for prompt collaboration
+        </h2>
+        <p
+          className="text-lg max-w-2xl mx-auto"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          Comprehensive tools designed for modern AI prompt development and team
+          collaboration
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          {
+            icon: "🧠",
+            title: "Smart Library",
+            desc: "Organize and categorize your prompts with intelligent tagging and search.",
+          },
+          {
+            icon: "👥",
+            title: "Team Collaboration",
+            desc: "Share prompts with your team and collaborate in real-time.",
+          },
+          {
+            icon: "⭐",
+            title: "Favorites & Ratings",
+            desc: "Save your best prompts and rate others contributions.",
+          },
+          {
+            icon: "📊",
+            title: "Analytics",
+            desc: "Track usage patterns and optimize your prompt performance.",
+          },
+        ].map((feature, index) => (
+          <div
+            key={index}
+            className="glass-card p-6 hover:border-primary/50 transition-all duration-300"
+          >
+            <div
+              className="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
+              style={{ backgroundColor: "var(--secondary)" }}
+            >
+              <span className="text-2xl">{feature.icon}</span>
+            </div>
+            <h3
+              className="text-lg font-semibold mb-2"
+              style={{ color: "var(--foreground)" }}
+            >
+              {feature.title}
+            </h3>
+            <p
+              className="text-sm leading-relaxed"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              {feature.desc}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    {/* Footer matching demo */}
+    <footer
+      className="border-t mt-20"
+      style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
+    >
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid md:grid-cols-4 gap-8">
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <div
+                className="w-6 h-6 rounded flex items-center justify-center"
+                style={{ backgroundColor: "var(--primary)" }}
+              >
+                <span style={{ color: "var(--primary-foreground)" }}>🤖</span>
+              </div>
+              <span
+                className="font-bold"
+                style={{ color: "var(--foreground)" }}
+              >
+                Prompt Teams
+              </span>
+            </div>
+            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+              Building the future of AI prompt collaboration
+            </p>
+          </div>
+          <div>
+            <h4
+              className="font-semibold mb-3"
+              style={{ color: "var(--foreground)" }}
+            >
+              Platform
+            </h4>
+            <ul
+              className="space-y-2 text-sm"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              <li>
+                <a href="#" className="hover:text-foreground transition-colors">
+                  Teams
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition-colors">
+                  Prompts
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition-colors">
+                  Analytics
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4
+              className="font-semibold mb-3"
+              style={{ color: "var(--foreground)" }}
+            >
+              Resources
+            </h4>
+            <ul
+              className="space-y-2 text-sm"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              <li>
+                <a href="#" className="hover:text-foreground transition-colors">
+                  Documentation
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition-colors">
+                  Tutorials
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition-colors">
+                  Community
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4
+              className="font-semibold mb-3"
+              style={{ color: "var(--foreground)" }}
+            >
+              Company
+            </h4>
+            <ul
+              className="space-y-2 text-sm"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              <li>
+                <a href="#" className="hover:text-foreground transition-colors">
+                  About
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition-colors">
+                  Contact
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition-colors">
+                  Privacy
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div
+          className="border-t mt-8 pt-8 text-center text-sm"
+          style={{
+            borderColor: "var(--border)",
+            color: "var(--muted-foreground)",
+          }}
+        >
+          <p>© 2025 Prompt Teams. All rights reserved.</p>
+        </div>
+      </div>
+    </footer>
+  </div>
+);
+
 export default function App() {
   const { user, signInWithGoogle, logout } = useAuth();
   const [teams, setTeams] = useState([]);
@@ -29,7 +343,7 @@ export default function App() {
   const [role, setRole] = useState(null);
   const [avatars, setAvatars] = useState({});
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState("prompts"); // 'prompts' | 'members' | 'favorites' | 'analytics' | 'activity'
+  const [activeView, setActiveView] = useState("prompts");
   const [teamStats, setTeamStats] = useState({});
 
   // Helper function to get user initials
@@ -48,7 +362,7 @@ export default function App() {
     return "U";
   }
 
-  // Helper component for avatar with fallback
+  // Enhanced Avatar component
   function UserAvatar({ src, name, email, size = "normal", className = "" }) {
     const [imageError, setImageError] = useState(false);
     const avatarClass = size === "small" ? "user-avatar-small" : "user-avatar";
@@ -95,16 +409,12 @@ export default function App() {
         const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setTeams(data);
 
-        // ✅ Only auto-select a team if NOT in "favorites" view
         if (data.length > 0 && !activeTeam && activeView !== "favorites") {
           setActiveTeam(data[0].id);
         }
 
-        // Clear active team if user no longer has access
         if (activeTeam && !data.find((t) => t.id === activeTeam)) {
           setActiveTeam(null);
-
-          // ✅ Default back to prompts only if not on "favorites"
           if (activeView !== "favorites") {
             setActiveView("prompts");
           }
@@ -147,7 +457,7 @@ export default function App() {
     fetchRole();
   }, [activeTeam, user]);
 
-  // Load avatars and team stats - FIXED
+  // Load avatars and team stats
   useEffect(() => {
     async function loadTeamData() {
       const avatarResults = {};
@@ -173,7 +483,7 @@ export default function App() {
           }
         }
 
-        // FIXED: Load team stats (prompt count) - Use getDocs instead of getDoc
+        // Load team stats
         try {
           const promptsQuery = collection(db, "teams", team.id, "prompts");
           const promptsSnapshot = await getDocs(promptsQuery);
@@ -250,17 +560,41 @@ export default function App() {
   // Get active team object
   const activeTeamObj = teams.find((t) => t.id === activeTeam);
 
-  // Get role badge color
-  function getRoleBadgeColor(role) {
+  // Get role badge styling
+  function getRoleBadge(role) {
+    const baseStyle = {
+      padding: "2px 8px",
+      borderRadius: "12px",
+      fontSize: "0.75rem",
+      fontWeight: "500",
+      border: "1px solid var(--border)",
+    };
+
     switch (role) {
       case "owner":
-        return "bg-purple-100 text-purple-800 border-purple-200";
+        return {
+          ...baseStyle,
+          backgroundColor: "var(--accent)",
+          color: "var(--accent-foreground)",
+        };
       case "admin":
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        return {
+          ...baseStyle,
+          backgroundColor: "var(--primary)",
+          color: "var(--primary-foreground)",
+        };
       case "member":
-        return "bg-green-100 text-green-800 border-green-200";
+        return {
+          ...baseStyle,
+          backgroundColor: "var(--secondary)",
+          color: "var(--secondary-foreground)",
+        };
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return {
+          ...baseStyle,
+          backgroundColor: "var(--muted)",
+          color: "var(--muted-foreground)",
+        };
     }
   }
 
@@ -276,92 +610,115 @@ export default function App() {
   // Loading state
   if (loading) {
     return (
-      <div className="app-container flex items-center justify-center">
-        <div className="text-center">
-          <div className="spinner mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your teams...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Not authenticated
-  if (!user) {
-    return (
-      <div className="app-container flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md">
-          <div className="text-6xl mb-4">🤖</div>
-          <h1 className="text-2xl font-bold mb-4 text-gray-800">
-            Welcome to Prompt Teams
-          </h1>
-          <p className="text-gray-600 mb-6">
-            Collaborate on AI prompts with your team
-          </p>
-          <button
-            onClick={signInWithGoogle}
-            className="btn-primary w-full py-3 text-lg"
-          >
-            Sign in with Google
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="app-container flex">
-      {/* Sidebar */}
-      <div className="team-sidebar w-72 p-4 flex flex-col">
-        {/* User Profile */}
-        <div className="flex items-center p-3 bg-gray-50 rounded-lg mb-4">
-          <UserAvatar
-            src={user.photoURL}
-            name={user.displayName}
-            email={user.email}
-            className="mr-3"
-          />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-800 truncate">
-              {user.displayName || user.email}
-            </p>
-            <p className="text-xs text-gray-500">
-              {teams.length} {teams.length === 1 ? "team" : "teams"}
+      <div className="app-container">
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="glass-card p-8 text-center">
+            <div className="neo-spinner mx-auto mb-4"></div>
+            <p style={{ color: "var(--muted-foreground)" }}>
+              Loading your teams...
             </p>
           </div>
         </div>
+      </div>
+    );
+  }
 
-        {/* Global View Toggle */}
-        <div className="mb-4">
+  // Not authenticated - show enhanced landing page
+  if (!user) {
+    return <SignInScreen onSignIn={signInWithGoogle} />;
+  }
+
+  return (
+    <div className="app-container flex min-h-screen">
+      {/* Enhanced Sidebar matching demo cards */}
+      <div className="team-sidebar w-72 p-4 flex flex-col">
+        {/* User Profile Card */}
+        <div className="glass-card p-4 mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <UserAvatar
+              src={user.photoURL}
+              name={user.displayName}
+              email={user.email}
+            />
+            <div className="flex-1 min-w-0">
+              <p
+                className="text-sm font-semibold truncate"
+                style={{ color: "var(--foreground)" }}
+              >
+                {user.displayName || user.email}
+              </p>
+              <p
+                className="text-xs"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                {teams.length} {teams.length === 1 ? "team" : "teams"}
+              </p>
+            </div>
+            <div className="w-2 h-2 bg-green-500 rounded-full ai-pulse-border"></div>
+          </div>
+        </div>
+
+        {/* Favorites Card */}
+        <div className="mb-6">
           <button
             onClick={() => {
               setActiveTeam(null);
               setActiveView("favorites");
             }}
-            className={`w-full p-3 text-left rounded-lg transition-colors ${
+            className={`w-full p-4 text-left rounded-lg transition-all duration-300 border ${
               activeView === "favorites" && !activeTeam
-                ? "bg-yellow-100 border-2 border-yellow-300"
-                : "bg-white hover:bg-gray-50 border-2 border-transparent"
+                ? "ai-glow border-primary"
+                : "glass-card hover:border-primary/50"
             }`}
           >
-            <div className="flex items-center gap-2">
-              <span className="text-lg">⭐</span>
-              <span className="font-medium">My Favorites</span>
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: "var(--secondary)" }}
+              >
+                <span className="text-lg">⭐</span>
+              </div>
+              <div>
+                <span
+                  className="font-semibold"
+                  style={{ color: "var(--foreground)" }}
+                >
+                  My Favorites
+                </span>
+                <p
+                  className="text-xs mt-1"
+                  style={{ color: "var(--muted-foreground)" }}
+                >
+                  Your saved prompts
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Your saved prompts from all teams
-            </p>
           </button>
         </div>
 
-        {/* Teams List */}
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-gray-800">My Teams</h2>
+        {/* Teams Header */}
+        <div className="flex items-center justify-between mb-4">
+          <h2
+            className="text-lg font-bold"
+            style={{ color: "var(--foreground)" }}
+          >
+            Teams
+          </h2>
           {teams.length > 0 && (
-            <span className="text-sm text-gray-500">{teams.length}</span>
+            <span
+              className="text-xs px-2 py-1 rounded-full"
+              style={{
+                backgroundColor: "var(--secondary)",
+                color: "var(--secondary-foreground)",
+              }}
+            >
+              {teams.length}
+            </span>
           )}
         </div>
 
-        <ul className="flex-1 overflow-y-auto space-y-2 mb-4">
+        {/* Teams List */}
+        <div className="flex-1 overflow-y-auto space-y-3 mb-6">
           {teams.map((team) => {
             const isOwner = team.ownerId === user.uid;
             const myRole = team.members?.[user.uid];
@@ -373,12 +730,10 @@ export default function App() {
             };
 
             return (
-              <li
+              <div
                 key={team.id}
-                className={`team-item p-3 cursor-pointer rounded-lg border-2 ${
-                  isActive
-                    ? "team-item active border-blue-200"
-                    : "border-transparent"
+                className={`team-item p-4 cursor-pointer ${
+                  isActive ? "active" : ""
                 }`}
               >
                 <div
@@ -396,35 +751,38 @@ export default function App() {
                     className="mt-1"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium text-gray-800 truncate">
+                    <div className="flex items-center gap-2 mb-2">
+                      <p
+                        className="font-semibold truncate"
+                        style={{ color: "var(--foreground)" }}
+                      >
                         {team.name}
                       </p>
-                      <span
-                        className={`px-2 py-0.5 text-xs font-medium rounded-full border capitalize ${getRoleBadgeColor(
-                          myRole
-                        )}`}
-                      >
-                        {myRole}
-                      </span>
+                      <span style={getRoleBadge(myRole)}>{myRole}</span>
                     </div>
-                    <div className="text-xs text-gray-500 space-y-0.5">
-                      <p>
-                        {stats.memberCount}{" "}
-                        {stats.memberCount === 1 ? "member" : "members"}
-                      </p>
-                      <p>
-                        {stats.promptCount}{" "}
-                        {stats.promptCount === 1 ? "prompt" : "prompts"}
-                      </p>
+                    <div
+                      className="flex items-center gap-4 text-xs"
+                      style={{ color: "var(--muted-foreground)" }}
+                    >
+                      <span className="flex items-center gap-1">
+                        👥 {stats.memberCount}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        📝 {stats.promptCount}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Team Actions */}
                 {isActive && (
-                  <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-200">
-                    <div className="text-xs text-gray-500">
+                  <div
+                    className="flex justify-between items-center mt-3 pt-3"
+                    style={{ borderTop: "1px solid var(--border)" }}
+                  >
+                    <div
+                      className="text-xs"
+                      style={{ color: "var(--muted-foreground)" }}
+                    >
                       Owner: {ownerData?.name || ownerData?.email || "Unknown"}
                     </div>
                     {isOwner && (
@@ -433,7 +791,8 @@ export default function App() {
                           e.stopPropagation();
                           deleteTeam(team.id);
                         }}
-                        className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded transition-colors"
+                        className="text-xs px-2 py-1 rounded transition-colors"
+                        style={{ color: "var(--destructive)" }}
                         title="Delete team"
                       >
                         Delete
@@ -441,13 +800,13 @@ export default function App() {
                     )}
                   </div>
                 )}
-              </li>
+              </div>
             );
           })}
-        </ul>
+        </div>
 
         {/* Create Team Form */}
-        <div className="border-t border-gray-200 pt-4">
+        <div className="border-t pt-4" style={{ borderColor: "var(--border)" }}>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -457,13 +816,13 @@ export default function App() {
                 e.target.reset();
               }
             }}
-            className="mb-4"
+            className="space-y-3 mb-4"
           >
             <input
               type="text"
               name="teamName"
               placeholder="New team name"
-              className="form-input w-full mb-2"
+              className="form-input"
               required
             />
             <button type="submit" className="btn-primary w-full">
@@ -472,7 +831,7 @@ export default function App() {
           </form>
 
           <button onClick={logout} className="btn-secondary w-full">
-            Logout
+            Sign Out
           </button>
         </div>
       </div>
@@ -480,95 +839,88 @@ export default function App() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div
+          className="p-6 border-b"
+          style={{
+            borderColor: "var(--border)",
+            backgroundColor: "var(--card)",
+          }}
+        >
           <div className="flex items-center justify-between">
             <div>
               {activeTeamObj ? (
                 <>
-                  <h1 className="text-2xl font-bold text-gray-800 mb-1">
+                  <h1
+                    className="text-2xl font-bold mb-2"
+                    style={{ color: "var(--foreground)" }}
+                  >
                     {activeTeamObj.name}
                   </h1>
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <span>
-                      Your role:{" "}
-                      <span
-                        className={`font-medium capitalize px-2 py-0.5 rounded text-xs ${getRoleBadgeColor(
-                          role
-                        ).replace("border-", "border ")}`}
-                      >
-                        {role}
-                      </span>
+                  <div
+                    className="flex items-center gap-4 text-sm"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
+                    <span className="flex items-center gap-2">
+                      Your role:
+                      <span style={getRoleBadge(role)}>{role}</span>
                     </span>
                     <span>
-                      {Object.keys(activeTeamObj.members || {}).length}{" "}
-                      {Object.keys(activeTeamObj.members || {}).length === 1
-                        ? "member"
-                        : "members"}
+                      {Object.keys(activeTeamObj.members || {}).length} members
                     </span>
                   </div>
                 </>
               ) : activeView === "favorites" ? (
                 <>
-                  <h1 className="text-2xl font-bold text-gray-800 mb-1">
+                  <h1
+                    className="text-2xl font-bold mb-2"
+                    style={{ color: "var(--foreground)" }}
+                  >
                     My Favorites
                   </h1>
-                  <p className="text-sm text-gray-600">
+                  <p
+                    className="text-sm"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
                     Your bookmarked prompts from all teams
                   </p>
                 </>
               ) : null}
             </div>
 
-            {/* View Toggle - Only show if we have an active team */}
+            {/* View Toggle */}
             {activeTeamObj && (
-              <div className="flex bg-gray-100 p-1 rounded-lg">
-                <button
-                  onClick={() => setActiveView("prompts")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
-                    activeView === "prompts"
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  Prompts
-                </button>
-                <button
-                  onClick={() => setActiveView("members")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
-                    activeView === "members"
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  Members
-                </button>
-                <button
-                  onClick={() => setActiveView("analytics")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
-                    activeView === "analytics"
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  Analytics
-                </button>
-                <button
-                  onClick={() => setActiveView("activity")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
-                    activeView === "activity"
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  Activity
-                </button>
+              <div className="glass-card p-1 rounded-lg">
+                {["prompts", "members", "analytics", "activity"].map((view) => (
+                  <button
+                    key={view}
+                    onClick={() => setActiveView(view)}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 capitalize ${
+                      activeView === view
+                        ? "text-primary-foreground"
+                        : "hover:text-foreground"
+                    }`}
+                    style={
+                      activeView === view
+                        ? {
+                            backgroundColor: "var(--primary)",
+                            color: "var(--primary-foreground)",
+                          }
+                        : { color: "var(--muted-foreground)" }
+                    }
+                  >
+                    {view}
+                  </button>
+                ))}
               </div>
             )}
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+        <div
+          className="flex-1 p-6 overflow-y-auto"
+          style={{ backgroundColor: "var(--background)" }}
+        >
           {activeTeamObj && activeView === "prompts" && (
             <>
               <PromptList activeTeam={activeTeamObj.id} userRole={role} />
@@ -607,19 +959,31 @@ export default function App() {
           {!activeTeamObj && activeView !== "favorites" && (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center py-12">
-                <div className="text-gray-400 text-6xl mb-4">👥</div>
-                <h2 className="text-xl font-semibold text-gray-600 mb-2">
-                  No Team Selected
-                </h2>
-                <p className="text-gray-500 mb-4">
-                  Select a team from the sidebar or create a new one to get
-                  started.
-                </p>
-                {teams.length === 0 && (
-                  <p className="text-sm text-gray-400">
-                    Create your first team to start collaborating on AI prompts!
+                <div className="glass-card p-8 max-w-md mx-auto">
+                  <div className="text-6xl mb-4">🚀</div>
+                  <h2
+                    className="text-xl font-semibold mb-4"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    No Team Selected
+                  </h2>
+                  <p
+                    className="mb-6"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
+                    Select a team from the sidebar or create a new one to get
+                    started.
                   </p>
-                )}
+                  {teams.length === 0 && (
+                    <p
+                      className="text-sm"
+                      style={{ color: "var(--muted-foreground)" }}
+                    >
+                      Create your first team to start collaborating on AI
+                      prompts!
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           )}

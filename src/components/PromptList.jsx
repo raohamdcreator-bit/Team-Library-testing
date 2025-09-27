@@ -1,4 +1,4 @@
-// src/components/PromptList.jsx
+// src/components/PromptList.jsx - Enhanced with Futuristic AI Theme and Advanced Animations - FIXED
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { db } from "../lib/firebase";
 import {
@@ -11,26 +11,952 @@ import {
   updateDoc,
   getDoc,
   writeBatch,
+  increment,
 } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import PromptForm from "./PromptForm";
-import AdvancedSearch from "./AdvancedSearch";
-import BulkOperations, { PromptSelector } from "./BulkOperations";
-import ExportImport, { ExportUtils } from "./ExportImport";
-import { FavoriteButton } from "./Favorites";
+import { FavoriteButton, useFavorites } from "./Favorites";
 import Comments from "./Comments";
-import { PromptRating } from "./PromptAnalytics";
-import { CompactAITools } from "./AIModelTools";
-import { ActivityLogger } from "./ActivityFeed";
-import { useCache, useDebounce, useThrottle } from "../hooks/useCache";
-import usePagination, { PaginationControls } from "../hooks/usePagination";
-import { useErrorHandler } from "./ErrorBoundary";
-import {
-  PromptCardSkeleton,
-  FormSkeleton,
-  SearchFiltersSkeleton,
-  BulkOperationsSkeleton,
-} from "./SkeletonLoaders";
+
+// Fixed cache hook implementation
+const useCache = (key, fetchFn, options = {}) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    if (options.enabled === false) return;
+    setLoading(true);
+    try {
+      const result = await fetchFn();
+      setData(result);
+    } catch (error) {
+      console.error(`Cache error for ${key}:`, error);
+    }
+    setLoading(false);
+  }, [key, options.enabled]); // Stable dependencies only
+
+  // useEffect(() => {
+  //   refresh();
+  // }, [key, options.enabled]); // Don't include refresh in dependencies
+
+  return { data, loading, refresh };
+};
+
+// Simple error handler hook
+const useErrorHandler = () => ({
+  handleError: (error) => {
+    console.error("Error:", error);
+  },
+});
+
+// Simple pagination hook
+const usePagination = (items, itemsPerPage) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(itemsPerPage);
+
+  const totalPages = Math.ceil(items.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentItems = items.slice(startIndex, endIndex);
+
+  return {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    currentItems,
+    setItemsPerPage: setPageSize,
+    resetPagination: () => setCurrentPage(1),
+  };
+};
+
+// Neural Loading Animation Component
+const NeuralLoadingAnimation = ({ text = "Processing..." }) => (
+  <div className="flex items-center justify-center py-12">
+    <div className="glass-card p-8 text-center cyber-glow">
+      <div className="relative mb-6">
+        <div className="neo-spinner mx-auto"></div>
+        <div className="absolute inset-0 neo-pulse">
+          <div className="w-8 h-8 border border-cyan-400 rounded-full mx-auto opacity-30"></div>
+        </div>
+        <div
+          className="absolute inset-0 neo-pulse"
+          style={{ animationDelay: "0.5s" }}
+        >
+          <div className="w-12 h-12 border border-purple-400 rounded-full mx-auto opacity-20"></div>
+        </div>
+      </div>
+      <p className="text-slate-300 text-sm font-medium">{text}</p>
+      <div className="mt-4 flex justify-center space-x-1">
+        <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+        <div
+          className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"
+          style={{ animationDelay: "0.2s" }}
+        ></div>
+        <div
+          className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"
+          style={{ animationDelay: "0.4s" }}
+        ></div>
+      </div>
+    </div>
+  </div>
+);
+
+// Enhanced Pagination Controls Component
+const PaginationControls = ({
+  pagination,
+  className = "",
+  onPageSizeChange,
+}) => {
+  const { currentPage, setCurrentPage, totalPages, currentItems } = pagination;
+
+  if (totalPages <= 1) return null;
+
+  return (
+    <div
+      className={`flex items-center justify-between glass-card p-6 rounded-2xl cyber-glow ${className}`}
+    >
+      <div className="flex items-center gap-6 text-sm text-slate-400">
+        <span className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-cyan-400 rounded-full neo-pulse"></div>
+          Page {currentPage} of {totalPages}
+        </span>
+        <select
+          value={pagination.pageSize || 10}
+          onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
+          className="bg-transparent border border-cyan-400/30 rounded-xl px-4 py-2 text-slate-300 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+        >
+          <option value={5}>5 per page</option>
+          <option value={10}>10 per page</option>
+          <option value={20}>20 per page</option>
+          <option value={50}>50 per page</option>
+        </select>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          className="p-3 glass-card rounded-xl text-cyan-400 hover:text-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+
+        <button
+          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+          className="p-3 glass-card rounded-xl text-cyan-400 hover:text-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Cyber Search Component
+const CyberSearch = ({ prompts, onFilteredResults, teamMembers }) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [selectedAuthor, setSelectedAuthor] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+
+  // Get all unique tags
+  const allTags = useMemo(() => {
+    const tagSet = new Set();
+    prompts.forEach((prompt) => {
+      if (prompt.tags) {
+        prompt.tags.forEach((tag) => tagSet.add(tag));
+      }
+    });
+    return Array.from(tagSet).sort();
+  }, [prompts]);
+
+  // Filter and sort prompts - memoized to prevent infinite updates
+  const filteredResults = useMemo(() => {
+    let filtered = prompts.filter((prompt) => {
+      const matchesSearch =
+        !searchTerm ||
+        prompt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        prompt.text.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesTags =
+        selectedTags.length === 0 ||
+        selectedTags.every((tag) => prompt.tags?.includes(tag));
+
+      const matchesAuthor =
+        !selectedAuthor || prompt.createdBy === selectedAuthor;
+
+      return matchesSearch && matchesTags && matchesAuthor;
+    });
+
+    // Sort results
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "newest":
+          return (
+            (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)
+          );
+        case "oldest":
+          return (
+            (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0)
+          );
+        case "title":
+          return a.title.localeCompare(b.title);
+        case "mostCopied":
+          return (b.stats?.copies || 0) - (a.stats?.copies || 0);
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [prompts, searchTerm, selectedTags, selectedAuthor, sortBy]);
+
+  // Update filtered results when they change
+  useEffect(() => {
+    onFilteredResults(filteredResults);
+  }, [filteredResults, onFilteredResults]);
+
+  return (
+    <div className="glass-card p-8 rounded-2xl mb-8 cyber-glow">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-3 h-3 bg-cyan-400 rounded-full neo-pulse"></div>
+        <h3 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+          Neural Search Interface
+        </h3>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Search Input */}
+        <div className="lg:col-span-2">
+          <input
+            type="text"
+            placeholder="Search neural patterns..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full search-input text-lg"
+          />
+        </div>
+
+        {/* Author Filter */}
+        <div>
+          <select
+            value={selectedAuthor}
+            onChange={(e) => setSelectedAuthor(e.target.value)}
+            className="w-full form-input text-lg"
+          >
+            <option value="">All Authors</option>
+            {Object.entries(teamMembers || {}).map(([uid, member]) => (
+              <option key={uid} value={uid}>
+                {member.name || member.email}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Sort Options */}
+        <div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="w-full form-input text-lg"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="title">By Title</option>
+            <option value="mostCopied">Most Copied</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Tag Filter */}
+      {allTags.length > 0 && (
+        <div className="mt-6">
+          <div className="flex flex-wrap gap-3">
+            {allTags.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => {
+                  setSelectedTags((prev) =>
+                    prev.includes(tag)
+                      ? prev.filter((t) => t !== tag)
+                      : [...prev, tag]
+                  );
+                }}
+                className={`prompt-tag transition-all duration-300 text-sm ${
+                  selectedTags.includes(tag)
+                    ? "bg-cyan-500/30 border-cyan-400 scale-110 cyber-glow"
+                    : "hover:scale-105"
+                }`}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Cyber Bulk Operations Component
+const CyberBulkOperations = ({
+  prompts,
+  selectedPrompts,
+  onSelectionChange,
+  onBulkDelete,
+  onBulkExport,
+  userRole,
+  userId,
+}) => {
+  const selectedCount = selectedPrompts.length;
+  const selectedData = prompts.filter((p) => selectedPrompts.includes(p.id));
+
+  const handleSelectAll = () => {
+    if (selectedCount === prompts.length) {
+      onSelectionChange([]);
+    } else {
+      onSelectionChange(prompts.map((p) => p.id));
+    }
+  };
+
+  if (prompts.length === 0) return null;
+
+  return (
+    <div className="glass-card p-6 rounded-2xl mb-8 cyber-glow">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <button
+            onClick={handleSelectAll}
+            className="flex items-center gap-3 text-sm text-slate-300 hover:text-cyan-300 transition-colors"
+          >
+            <input
+              type="checkbox"
+              checked={selectedCount === prompts.length}
+              onChange={handleSelectAll}
+              className="w-5 h-5 text-cyan-500 bg-transparent border-2 border-cyan-400/50 rounded focus:ring-cyan-500 focus:ring-2"
+            />
+            Select All ({prompts.length})
+          </button>
+
+          {selectedCount > 0 && (
+            <span className="text-sm text-cyan-400 flex items-center gap-2">
+              <div className="w-2 h-2 bg-cyan-400 rounded-full neo-pulse"></div>
+              {selectedCount} selected
+            </span>
+          )}
+        </div>
+
+        {selectedCount > 0 && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => onBulkExport(selectedData, "json")}
+              className="neo-btn btn-secondary px-4 py-2 text-sm font-semibold"
+            >
+              Export Selected
+            </button>
+
+            {(userRole === "owner" || userRole === "admin") && (
+              <button
+                onClick={() => {
+                  if (confirm(`Delete ${selectedCount} selected prompts?`)) {
+                    onBulkDelete(selectedPrompts);
+                  }
+                }}
+                className="neo-btn btn-danger px-4 py-2 text-sm font-semibold"
+              >
+                Delete Selected
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Activity Logger (simplified)
+const ActivityLogger = {
+  logPromptCreated: async (teamId, userId, promptId, title) => {
+    console.log(`Activity: Prompt "${title}" created by ${userId}`);
+  },
+  logPromptUpdated: async (teamId, userId, promptId, title) => {
+    console.log(`Activity: Prompt "${title}" updated by ${userId}`);
+  },
+};
+
+// Enhanced AI Tools Component
+const CyberAITools = ({ text }) => (
+  <div className="space-y-4">
+    <div className="flex items-center gap-3 text-sm text-purple-300">
+      <div className="w-3 h-3 bg-purple-400 rounded-full neo-pulse"></div>
+      <span className="font-semibold">AI Enhancement Tools</span>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <button className="p-4 glass-card rounded-xl text-sm text-slate-300 hover:text-purple-300 transition-all duration-300 hover:scale-105 cyber-glow">
+        <div className="flex items-center gap-2">
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 10V3L4 14h7v7l9-11h-7z"
+            />
+          </svg>
+          Optimize Prompt
+        </div>
+      </button>
+      <button className="p-4 glass-card rounded-xl text-sm text-slate-300 hover:text-purple-300 transition-all duration-300 hover:scale-105 cyber-glow">
+        <div className="flex items-center gap-2">
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          Generate Variations
+        </div>
+      </button>
+      <button className="p-4 glass-card rounded-xl text-sm text-slate-300 hover:text-purple-300 transition-all duration-300 hover:scale-105 cyber-glow">
+        <div className="flex items-center gap-2">
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          Analyze Complexity
+        </div>
+      </button>
+      <button className="p-4 glass-card rounded-xl text-sm text-slate-300 hover:text-purple-300 transition-all duration-300 hover:scale-105 cyber-glow">
+        <div className="flex items-center gap-2">
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+            />
+          </svg>
+          Suggest Improvements
+        </div>
+      </button>
+    </div>
+  </div>
+);
+
+// Enhanced Cyber Prompt Card Component
+const CyberPromptCard = ({
+  prompt,
+  profile,
+  isSelected,
+  isExpanded,
+  showComments,
+  showAITools,
+  canModify,
+  onSelect,
+  onToggleExpanded,
+  onToggleComments,
+  onToggleAITools,
+  onCopy,
+  onEdit,
+  onDelete,
+  teamId,
+  teamName,
+}) => {
+  const [copied, setCopied] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const { isFavorite, toggleFavorite } = useFavorites();
+
+  const UserAvatar = ({ src, name, email, size = "normal" }) => {
+    const avatarClass = size === "small" ? "w-10 h-10" : "w-12 h-12";
+
+    if (!src || imageError) {
+      const initials = name
+        ? name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2)
+        : email
+        ? email[0].toUpperCase()
+        : "U";
+      return (
+        <div className={`${avatarClass} avatar-initials cyber-glow`}>
+          {initials}
+        </div>
+      );
+    }
+
+    return (
+      <img
+        src={src}
+        alt="avatar"
+        className={`${avatarClass} rounded-full object-cover border-2 border-cyan-400/30`}
+        onError={() => setImageError(true)}
+      />
+    );
+  };
+
+  const handleCopy = async () => {
+    await onCopy(prompt.text, prompt.id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleFavorite = async () => {
+    await toggleFavorite(prompt, teamId, teamName);
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "";
+    try {
+      return timestamp.toDate().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
+  };
+
+  const getTextStats = (text) => {
+    if (!text) return { chars: 0, words: 0, lines: 0 };
+    return {
+      chars: text.length,
+      words: text.trim().split(/\s+/).filter(Boolean).length,
+      lines: text.split("\n").length,
+    };
+  };
+
+  const shouldTruncate = prompt.text && prompt.text.length > 300;
+  const displayText =
+    shouldTruncate && !isExpanded
+      ? prompt.text.substring(0, 300) + "..."
+      : prompt.text;
+  const textStats = getTextStats(prompt.text);
+
+  return (
+    <div
+      className={`prompt-card will-change-transform ${
+        isSelected ? "cyber-glow border-cyan-400/50" : ""
+      }`}
+    >
+      {/* Header */}
+      <div className="p-8 border-b border-white/10">
+        <div className="flex items-start gap-6">
+          {/* Selection Checkbox */}
+          <div className="pt-2">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={(e) => onSelect(prompt.id, e.target.checked)}
+              className="w-5 h-5 text-cyan-500 bg-transparent border-2 border-cyan-400/50 rounded focus:ring-cyan-500 focus:ring-2"
+            />
+          </div>
+
+          {/* Author Avatar */}
+          <UserAvatar
+            src={profile?.avatar}
+            name={profile?.name}
+            email={profile?.email}
+            size="small"
+          />
+
+          {/* Header Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-4 mb-3">
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-cyan-300 to-purple-300 bg-clip-text text-transparent">
+                    {prompt.title}
+                  </h3>
+                  <button
+                    onClick={handleFavorite}
+                    className={`p-2 rounded-xl transition-all duration-300 ${
+                      isFavorite(prompt.id)
+                        ? "text-yellow-400 bg-yellow-400/20 scale-110 cyber-glow"
+                        : "text-slate-400 hover:text-yellow-400 hover:bg-yellow-400/10"
+                    }`}
+                    title={
+                      isFavorite(prompt.id)
+                        ? "Remove from favorites"
+                        : "Add to favorites"
+                    }
+                  >
+                    <span className="text-xl">
+                      {isFavorite(prompt.id) ? "★" : "☆"}
+                    </span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-6 text-sm text-slate-400 flex-wrap">
+                  <span className="font-medium text-slate-300 text-lg">
+                    {profile?.name || profile?.email || "Unknown Neural Entity"}
+                  </span>
+                  <span className="w-2 h-2 bg-slate-500 rounded-full"></span>
+                  <span className="text-lg">
+                    {formatDate(prompt.createdAt)}
+                  </span>
+                  {prompt.updatedAt && (
+                    <>
+                      <span className="w-2 h-2 bg-cyan-400 rounded-full neo-pulse"></span>
+                      <span className="text-cyan-400 text-lg">
+                        synchronized
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="flex items-center gap-3 ml-6">
+                <button
+                  onClick={handleCopy}
+                  className={`p-4 rounded-2xl transition-all duration-300 ${
+                    copied
+                      ? "bg-green-500/20 text-green-400 scale-110 cyber-glow"
+                      : "glass-card hover:scale-110 text-cyan-400"
+                  }`}
+                  title="Copy to neural buffer"
+                >
+                  {copied ? (
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
+                    </svg>
+                  )}
+                </button>
+
+                {canModify && (
+                  <>
+                    <button
+                      onClick={() => onEdit(prompt)}
+                      className="p-4 glass-card hover:scale-110 text-purple-400 hover:text-purple-300 transition-all duration-300"
+                      title="Modify prompt"
+                    >
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => onDelete(prompt.id)}
+                      className="p-4 glass-card hover:scale-110 text-red-400 hover:text-red-300 transition-all duration-300"
+                      title="Delete prompt"
+                    >
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-8">
+        {/* Prompt Text */}
+        <div className="mb-8">
+          <div className="glass-card p-6 rounded-2xl border border-cyan-500/20 cyber-glow">
+            <pre className="text-slate-200 whitespace-pre-wrap font-mono text-base leading-relaxed">
+              {displayText}
+            </pre>
+          </div>
+
+          {shouldTruncate && (
+            <button
+              onClick={() => onToggleExpanded(prompt.id)}
+              className="mt-4 flex items-center gap-3 text-cyan-400 hover:text-cyan-300 text-base font-medium transition-colors"
+            >
+              {isExpanded ? (
+                <>
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 15l7-7 7 7"
+                    />
+                  </svg>
+                  Collapse
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                  Expand
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Tags */}
+        {prompt.tags && prompt.tags.length > 0 && (
+          <div className="flex flex-wrap gap-3 mb-8">
+            {prompt.tags.map((tag, index) => (
+              <span
+                key={index}
+                className="prompt-tag hover:scale-110 cursor-pointer will-change-transform text-sm"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Cyber Stats Bar */}
+        <div className="glass-card p-6 rounded-2xl mb-8 cyber-glow">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-8 text-slate-400">
+              <span className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-cyan-400 rounded-full neo-pulse"></div>
+                {textStats.chars} chars
+              </span>
+              <span className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-purple-400 rounded-full neo-pulse"></div>
+                {textStats.words} tokens
+              </span>
+              <span className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-blue-400 rounded-full neo-pulse"></div>
+                {textStats.lines} lines
+              </span>
+            </div>
+
+            {prompt.stats && (
+              <div className="flex items-center gap-6 text-slate-300">
+                {prompt.stats.copies > 0 && (
+                  <span className="flex items-center gap-2">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
+                    </svg>
+                    {prompt.stats.copies}
+                  </span>
+                )}
+                {prompt.stats.averageRating > 0 && (
+                  <span className="flex items-center gap-2 text-yellow-400">
+                    ⭐ {prompt.stats.averageRating.toFixed(1)}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Cyber Action Interface */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => onToggleComments(prompt.id)}
+            className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-base font-medium transition-all duration-300 will-change-transform ${
+              showComments
+                ? "glass-card cyber-glow bg-cyan-500/20 text-cyan-300 scale-105"
+                : "glass-card text-slate-400 hover:text-cyan-300 hover:scale-105"
+            }`}
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+              />
+            </svg>
+            Neural Comments
+          </button>
+
+          <button
+            onClick={() => onToggleAITools(prompt.id)}
+            className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-base font-medium transition-all duration-300 will-change-transform ${
+              showAITools
+                ? "glass-card cyber-glow bg-purple-500/20 text-purple-300 scale-105"
+                : "glass-card text-slate-400 hover:text-purple-300 hover:scale-105"
+            }`}
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+              />
+            </svg>
+            AI Interface
+          </button>
+        </div>
+      </div>
+
+      {/* Expanded Cyber Interfaces */}
+      {(showComments || showAITools) && (
+        <div className="border-t border-white/10 p-8 bg-gradient-to-r from-cyan-900/20 to-purple-900/20">
+          {showAITools && (
+            <div className="mb-8">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-3 h-3 bg-purple-400 rounded-full neo-pulse"></div>
+                <h4 className="text-lg font-bold text-purple-300">
+                  AI Neural Interface
+                </h4>
+              </div>
+              <div className="glass-card p-6 rounded-2xl cyber-glow">
+                <CyberAITools text={prompt.text} />
+              </div>
+            </div>
+          )}
+
+          {showComments && (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-3 h-3 bg-cyan-400 rounded-full neo-pulse"></div>
+                <h4 className="text-lg font-bold text-cyan-300">
+                  Neural Comments
+                </h4>
+              </div>
+              <div className="glass-card p-6 rounded-2xl cyber-glow">
+                <Comments
+                  teamId={teamId}
+                  promptId={prompt.id}
+                  userRole="member"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function PromptList({ activeTeam, userRole }) {
   const { user } = useAuth();
@@ -53,35 +979,37 @@ export default function PromptList({ activeTeam, userRole }) {
   // Pagination
   const pagination = usePagination(filteredPrompts, itemsPerPage);
 
-  // Cache team profiles
+  // Memoized fetch function for profiles to prevent recreation on every render
+  const fetchProfiles = useCallback(async () => {
+    if (!prompts.length) return {};
+
+    const result = {};
+    const uniqueCreators = [
+      ...new Set(prompts.map((p) => p.createdBy).filter(Boolean)),
+    ];
+
+    await Promise.all(
+      uniqueCreators.map(async (uid) => {
+        try {
+          const snap = await getDoc(doc(db, "users", uid));
+          if (snap.exists()) {
+            result[uid] = snap.data();
+          }
+        } catch (error) {
+          console.error("Error loading profile for", uid, error);
+        }
+      })
+    );
+
+    return result;
+  }, [prompts]); // Only depend on prompts array
+
+  // FIXED - stable enabled condition
   const { data: cachedProfiles, refresh: refreshProfiles } = useCache(
     `team-profiles-${activeTeam}`,
-    async () => {
-      if (!prompts.length) return {};
-
-      const result = {};
-      const uniqueCreators = [
-        ...new Set(prompts.map((p) => p.createdBy).filter(Boolean)),
-      ];
-
-      await Promise.all(
-        uniqueCreators.map(async (uid) => {
-          try {
-            const snap = await getDoc(doc(db, "users", uid));
-            if (snap.exists()) {
-              result[uid] = snap.data();
-            }
-          } catch (error) {
-            console.error("Error loading profile for", uid, error);
-          }
-        })
-      );
-
-      return result;
-    },
+    fetchProfiles,
     {
-      ttl: 300000, // 5 minutes
-      enabled: prompts.length > 0,
+      enabled: true, // Always enabled, let fetchProfiles handle empty prompts
     }
   );
 
@@ -92,65 +1020,7 @@ export default function PromptList({ activeTeam, userRole }) {
     }
   }, [cachedProfiles]);
 
-  // Throttled scroll handler for performance
-  const handleScroll = useThrottle((e) => {
-    // Handle scroll events if needed
-  }, 100);
-
-  // Helper function to get user initials
-  function getUserInitials(name, email) {
-    if (name) {
-      return name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2);
-    }
-    if (email) {
-      return email[0].toUpperCase();
-    }
-    return "U";
-  }
-
-  // Memoized avatar component for performance
-  const UserAvatar = useMemo(() => {
-    return function UserAvatarComponent({
-      src,
-      name,
-      email,
-      size = "normal",
-      className = "",
-    }) {
-      const [imageError, setImageError] = useState(false);
-      const avatarClass =
-        size === "small" ? "user-avatar-small" : "user-avatar";
-      const initialsClass =
-        size === "small"
-          ? "avatar-initials avatar-initials-small"
-          : "avatar-initials";
-
-      if (!src || imageError) {
-        return (
-          <div className={`${initialsClass} ${avatarClass} ${className}`}>
-            {getUserInitials(name, email)}
-          </div>
-        );
-      }
-
-      return (
-        <img
-          src={src}
-          alt="avatar"
-          className={`${avatarClass} ${className}`}
-          onError={() => setImageError(true)}
-          loading="lazy"
-        />
-      );
-    };
-  }, []);
-
-  // Load prompts and team info with error handling
+  // Load prompts and team info with error handling - FIXED VERSION
   useEffect(() => {
     if (!activeTeam) {
       setPrompts([]);
@@ -187,17 +1057,8 @@ export default function PromptList({ activeTeam, userRole }) {
           // Clear selection when prompts change
           setSelectedPrompts([]);
 
-          // Reset pagination to first page if needed
-          pagination.resetPagination();
-
-          // Refresh profiles cache if new creators are found
-          const currentCreators = new Set(Object.keys(profiles));
-          const newCreators = promptData.some(
-            (p) => p.createdBy && !currentCreators.has(p.createdBy)
-          );
-          if (newCreators) {
-            refreshProfiles();
-          }
+          // Note: Don't call pagination.resetPagination() here as it causes infinite loop
+          // The pagination will reset automatically when filteredPrompts changes
         } catch (error) {
           handleError(error);
           setLoading(false);
@@ -211,7 +1072,30 @@ export default function PromptList({ activeTeam, userRole }) {
     );
 
     return () => unsub();
-  }, [activeTeam, handleError]);
+  }, [activeTeam]); // ONLY depend on activeTeam - remove all other dependencies
+
+  // Separate effect to handle profile refreshing
+  useEffect(() => {
+    if (prompts.length > 0 && cachedProfiles) {
+      const currentCreators = new Set(Object.keys(cachedProfiles));
+      const newCreators = prompts.some(
+        (p) => p.createdBy && !currentCreators.has(p.createdBy)
+      );
+      if (newCreators) {
+        refreshProfiles();
+      }
+    }
+  }, [prompts, cachedProfiles, refreshProfiles]);
+
+  // Reset pagination when filtered prompts change
+  useEffect(() => {
+    pagination.resetPagination();
+  }, [filteredPrompts.length]); // Only reset when the count changes // Don't include profiles or pagination in dependencies
+
+  // Set initial filtered prompts
+  const handleFilteredResults = useCallback((filtered) => {
+    setFilteredPrompts(filtered);
+  }, []);
 
   // Optimized add prompt function with activity logging
   const addPrompt = useCallback(
@@ -254,7 +1138,8 @@ export default function PromptList({ activeTeam, userRole }) {
   // Optimized delete prompt function
   const handleDelete = useCallback(
     async (id) => {
-      if (!confirm("Are you sure you want to delete this prompt?")) return;
+      if (!confirm("Are you sure you want to delete this neural prompt?"))
+        return;
 
       try {
         await deleteDoc(doc(db, "teams", activeTeam, "prompts", id));
@@ -282,6 +1167,7 @@ export default function PromptList({ activeTeam, userRole }) {
         });
 
         await batch.commit();
+        setSelectedPrompts([]);
       } catch (error) {
         console.error("Error in bulk delete:", error);
         handleError(error);
@@ -290,66 +1176,74 @@ export default function PromptList({ activeTeam, userRole }) {
     [activeTeam, handleError]
   );
 
-  // Bulk export
-  const handleBulkExport = useCallback(
-    async (selectedPromptData, format) => {
-      const timestamp = new Date().toISOString().slice(0, 10);
-      const filename = `${teamName.replace(/\s+/g, "_")}_prompts_${timestamp}`;
+  // Export functionality
+  const exportPrompts = useCallback(
+    (promptsData, format, filename) => {
+      let content, mimeType, fileExtension;
 
-      try {
-        switch (format) {
-          case "json":
-            ExportUtils.exportAsJSON(selectedPromptData, filename);
-            break;
-          case "csv":
-            ExportUtils.exportAsCSV(selectedPromptData, filename);
-            break;
-          case "txt":
-            ExportUtils.exportAsTXT(selectedPromptData, filename);
-            break;
-          default:
-            throw new Error("Unsupported export format");
-        }
-      } catch (error) {
-        console.error("Export error:", error);
-        handleError(error);
+      switch (format) {
+        case "json":
+          content = JSON.stringify(promptsData, null, 2);
+          mimeType = "application/json";
+          fileExtension = "json";
+          break;
+        case "csv":
+          const headers = ["Title", "Text", "Tags", "Author", "Created"];
+          const rows = promptsData.map((p) => [
+            p.title,
+            p.text.replace(/"/g, '""'),
+            (p.tags || []).join("; "),
+            profiles[p.createdBy]?.name ||
+              profiles[p.createdBy]?.email ||
+              "Unknown",
+            p.createdAt?.toDate().toLocaleDateString() || "",
+          ]);
+          content = [headers, ...rows]
+            .map((row) => row.map((cell) => `"${cell}"`).join(","))
+            .join("\n");
+          mimeType = "text/csv";
+          fileExtension = "csv";
+          break;
+        case "txt":
+          content = promptsData
+            .map(
+              (p) =>
+                `Title: ${p.title}\nText: ${p.text}\nTags: ${(
+                  p.tags || []
+                ).join(", ")}\n${"=".repeat(50)}\n`
+            )
+            .join("\n");
+          mimeType = "text/plain";
+          fileExtension = "txt";
+          break;
+        default:
+          return;
       }
+
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${filename}.${fileExtension}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     },
-    [teamName, handleError]
+    [profiles]
   );
 
-  // Import prompts with batching
-  const handleImport = useCallback(
-    async (promptsData) => {
-      const batch = writeBatch(db);
-
-      try {
-        promptsData.forEach((promptData) => {
-          const promptRef = doc(collection(db, "teams", activeTeam, "prompts"));
-          batch.set(promptRef, {
-            ...promptData,
-            createdBy: user.uid,
-            createdAt: serverTimestamp(),
-            importedAt: serverTimestamp(),
-            stats: {
-              views: 0,
-              copies: 0,
-              comments: 0,
-              ratings: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-              totalRatings: 0,
-              averageRating: 0,
-            },
-          });
-        });
-
-        await batch.commit();
-        setShowImport(false);
-      } catch (error) {
-        console.error("Error importing prompts:", error);
-        handleError(error);
-      }
+  // Bulk export
+  const handleBulkExport = useCallback(
+    (selectedPromptData, format) => {
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const filename = `${teamName.replace(
+        /\s+/g,
+        "_"
+      )}_neural_prompts_${timestamp}`;
+      exportPrompts(selectedPromptData, format, filename);
     },
-    [activeTeam, user.uid, handleError]
+    [teamName, exportPrompts]
   );
 
   // Update prompt with activity logging
@@ -381,52 +1275,62 @@ export default function PromptList({ activeTeam, userRole }) {
     [activeTeam, user.uid, handleError]
   );
 
-  // Enhanced copy function with usage tracking - FIXED
+  // Enhanced copy function with usage tracking
   const copyToClipboard = useCallback(
     async (text, promptId) => {
       try {
         await navigator.clipboard.writeText(text);
 
-        // Track copy usage - FIXED increment import
+        // Track copy usage
         if (promptId) {
-          const { increment } = await import("firebase/firestore");
           await updateDoc(doc(db, "teams", activeTeam, "prompts", promptId), {
             "stats.copies": increment(1),
             "stats.lastUsed": serverTimestamp(),
           });
         }
 
-        // Show toast notification
+        // Show neural toast notification
         const toast = document.createElement("div");
-        toast.textContent = "Copied to clipboard!";
+        toast.innerHTML = `
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 bg-green-400 rounded-full neo-pulse"></div>
+            <span>Neural buffer synchronized!</span>
+          </div>
+        `;
         toast.className =
-          "fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50";
+          "fixed top-4 right-4 glass-card text-green-400 px-4 py-3 rounded-xl z-50 neo-glow";
         document.body.appendChild(toast);
-        setTimeout(() => document.body.removeChild(toast), 2000);
+        setTimeout(() => {
+          if (document.body.contains(toast)) {
+            document.body.removeChild(toast);
+          }
+        }, 3000);
       } catch (error) {
         console.error("Failed to copy:", error);
         // Fallback for older browsers
         const textArea = document.createElement("textarea");
         textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
         document.body.appendChild(textArea);
         textArea.select();
         document.execCommand("copy");
         document.body.removeChild(textArea);
-        alert("Prompt copied to clipboard!");
+
+        const toast = document.createElement("div");
+        toast.textContent = "Neural buffer synchronized (legacy mode)!";
+        toast.className =
+          "fixed top-4 right-4 glass-card text-blue-400 px-4 py-3 rounded-xl z-50";
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          if (document.body.contains(toast)) {
+            document.body.removeChild(toast);
+          }
+        }, 3000);
       }
     },
     [activeTeam]
   );
-
-  // Text stats calculator
-  const getTextStats = useCallback((text) => {
-    if (!text) return { chars: 0, words: 0, lines: 0 };
-    return {
-      chars: text.length,
-      words: text.trim().split(/\s+/).filter(Boolean).length,
-      lines: text.split("\n").length,
-    };
-  }, []);
 
   // Toggle functions
   const toggleExpanded = useCallback((promptId) => {
@@ -493,307 +1397,149 @@ export default function PromptList({ activeTeam, userRole }) {
     [user, userRole]
   );
 
-  // Date formatter
-  const formatDate = useCallback((timestamp) => {
-    if (!timestamp) return "";
-    try {
-      return timestamp.toDate().toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return "";
-    }
+  // Handle page size change
+  const handlePageSizeChange = useCallback((newSize) => {
+    setItemsPerPage(newSize);
   }, []);
 
-  // Handle page size change
-  const handlePageSizeChange = useCallback(
-    (newSize) => {
-      setItemsPerPage(newSize);
-      pagination.setItemsPerPage(newSize);
-    },
-    [pagination]
-  );
-
-  // Show loading skeletons
+  // Neural Loading Component
   if (loading) {
-    return (
-      <div className="mb-8">
-        <SearchFiltersSkeleton />
-        <BulkOperationsSkeleton />
-        <FormSkeleton />
-        <div className="space-y-4">
-          {Array.from({ length: 5 }, (_, i) => (
-            <PromptCardSkeleton key={i} />
-          ))}
-        </div>
-      </div>
-    );
+    return <NeuralLoadingAnimation />;
   }
 
   return (
     <div className="mb-8">
-      {/* Header with Actions */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-gray-800">Team Prompts</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            {prompts.length} {prompts.length === 1 ? "prompt" : "prompts"} total
-            {filteredPrompts.length < prompts.length &&
-              ` • ${filteredPrompts.length} shown`}
-          </p>
-        </div>
+      {/* Enhanced Header with Neural Styling */}
+      <div className="glass-card p-6 mb-6 neo-glow">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mb-2">
+              Neural Prompt Library
+            </h2>
+            <div className="flex items-center gap-4 text-sm text-slate-400">
+              <span className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-400 rounded-full neo-pulse"></div>
+                {prompts.length} {prompts.length === 1 ? "prompt" : "prompts"}{" "}
+                in neural network
+              </span>
+              {filteredPrompts.length < prompts.length && (
+                <span className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full neo-pulse"></div>
+                  {filteredPrompts.length} filtered results
+                </span>
+              )}
+            </div>
+          </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowImport(!showImport)}
-            className="btn-secondary text-sm px-3 py-1.5"
-          >
-            Import
-          </button>
-
-          {prompts.length > 0 && (
-            <button
-              onClick={() => handleBulkExport(prompts, "json")}
-              className="btn-secondary text-sm px-3 py-1.5"
-            >
-              Export All
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {prompts.length > 0 && (
+              <button
+                onClick={() => handleBulkExport(prompts, "json")}
+                className="neo-btn btn-secondary px-4 py-2 text-sm"
+              >
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+                Export All
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Advanced Search */}
-      <AdvancedSearch
+      {/* Advanced Search with Neo Styling */}
+      <CyberSearch
         prompts={prompts}
-        onFilteredResults={setFilteredPrompts}
+        onFilteredResults={handleFilteredResults}
         teamMembers={profiles}
       />
 
-      {/* Bulk Operations */}
-      {prompts.length > 0 && (
-        <BulkOperations
-          prompts={filteredPrompts}
-          selectedPrompts={selectedPrompts}
-          onSelectionChange={handleSelectionChange}
-          onBulkDelete={handleBulkDelete}
-          onBulkExport={handleBulkExport}
-          userRole={userRole}
-          userId={user?.uid}
-        />
-      )}
-
-      {/* Import Component */}
-      {showImport && (
-        <ExportImport
-          onImport={handleImport}
-          teamId={activeTeam}
-          teamName={teamName}
-          userRole={userRole}
-        />
-      )}
-
-      {/* Prompt Form */}
-      <PromptForm
-        onSubmit={addPrompt}
-        editingPrompt={editingPrompt}
-        onUpdate={handleUpdate}
-        onCancel={() => setEditingPrompt(null)}
+      {/* Bulk Operations with Neo Styling */}
+      <CyberBulkOperations
+        prompts={filteredPrompts}
+        selectedPrompts={selectedPrompts}
+        onSelectionChange={handleSelectionChange}
+        onBulkDelete={handleBulkDelete}
+        onBulkExport={handleBulkExport}
+        userRole={userRole}
+        userId={user?.uid}
       />
 
-      {/* Prompts List with Pagination */}
+      {/* Enhanced Prompt Form */}
+      <div className="mb-8">
+        <PromptForm
+          onSubmit={addPrompt}
+          editingPrompt={editingPrompt}
+          onUpdate={handleUpdate}
+          onCancel={() => setEditingPrompt(null)}
+        />
+      </div>
+
+      {/* Enhanced Prompts List */}
       {filteredPrompts.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-gray-400 text-6xl mb-4">💡</div>
-          <h3 className="text-lg font-semibold text-gray-600 mb-2">
-            {prompts.length === 0 ? "No prompts yet" : "No prompts found"}
-          </h3>
-          <p className="text-gray-500">
-            {prompts.length === 0
-              ? "Create your first prompt using the form above"
-              : "Try adjusting your search or filter criteria"}
-          </p>
+        <div className="text-center py-16">
+          <div className="glass-card p-12 max-w-md mx-auto neo-glow">
+            <div className="text-6xl mb-6 neo-pulse">🧠</div>
+            <h3 className="text-xl font-semibold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mb-4">
+              {prompts.length === 0
+                ? "Neural Network Empty"
+                : "No Matching Patterns"}
+            </h3>
+            <p className="text-slate-400 mb-6">
+              {prompts.length === 0
+                ? "Initialize your first neural prompt using the interface above"
+                : "Adjust your search parameters to find matching prompts"}
+            </p>
+          </div>
         </div>
       ) : (
         <>
           {/* Pagination Controls - Top */}
           <PaginationControls
             pagination={pagination}
-            className="mb-4"
+            className="mb-6"
             onPageSizeChange={handlePageSizeChange}
           />
 
-          {/* Prompts Grid */}
-          <div className="space-y-4">
+          {/* Neural Prompts Grid */}
+          <div className="space-y-6">
             {pagination.currentItems.map((prompt) => {
               const profile = profiles[prompt.createdBy];
               const isExpanded = expandedPrompts.has(prompt.id);
-              const shouldTruncate = prompt.text && prompt.text.length > 300;
-              const displayText =
-                shouldTruncate && !isExpanded
-                  ? prompt.text.substring(0, 300) + "..."
-                  : prompt.text;
-              const textStats = getTextStats(prompt.text);
               const isSelected = selectedPrompts.includes(prompt.id);
               const showComments = expandedComments.has(prompt.id);
               const showAITools = expandedAITools.has(prompt.id);
 
               return (
-                <div
+                <CyberPromptCard
                   key={prompt.id}
-                  className={`prompt-card p-4 ${
-                    isSelected ? "ring-2 ring-blue-500 ring-opacity-50" : ""
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    {/* Selection Checkbox */}
-                    <PromptSelector
-                      promptId={prompt.id}
-                      isSelected={isSelected}
-                      onSelectionChange={handlePromptSelection}
-                      className="mt-1"
-                    />
-
-                    {/* Author Avatar */}
-                    <UserAvatar
-                      src={profile?.avatar}
-                      name={profile?.name}
-                      email={profile?.email}
-                      size="small"
-                      className="mt-1"
-                    />
-
-                    {/* Main Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold text-gray-800">
-                              {prompt.title}
-                            </h4>
-                            <FavoriteButton
-                              prompt={prompt}
-                              teamId={activeTeam}
-                              teamName={teamName}
-                              size="small"
-                            />
-                          </div>
-                          <div className="flex items-center text-xs text-gray-500 gap-2 flex-wrap">
-                            <span>
-                              {profile?.name ||
-                                profile?.email ||
-                                "Unknown user"}
-                            </span>
-                            <span>•</span>
-                            <span>{formatDate(prompt.createdAt)}</span>
-                            {prompt.updatedAt && (
-                              <>
-                                <span>•</span>
-                                <span>edited</span>
-                              </>
-                            )}
-                            <span>•</span>
-                            <span>
-                              {textStats.chars} chars, {textStats.words} words
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 ml-4">
-                          <button
-                            onClick={() =>
-                              copyToClipboard(prompt.text, prompt.id)
-                            }
-                            className="text-blue-600 hover:text-blue-800 text-sm px-2 py-1 rounded transition-colors"
-                            title="Copy to clipboard"
-                          >
-                            📋
-                          </button>
-
-                          {canModifyPrompt(prompt) && (
-                            <>
-                              <button
-                                onClick={() => setEditingPrompt(prompt)}
-                                className="text-blue-600 hover:text-blue-800 text-sm px-2 py-1 rounded transition-colors"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDelete(prompt.id)}
-                                className="text-red-600 hover:text-red-800 text-sm px-2 py-1 rounded transition-colors"
-                              >
-                                Delete
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mb-3">
-                        <pre className="text-gray-700 whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                          {displayText}
-                        </pre>
-
-                        {shouldTruncate && (
-                          <button
-                            onClick={() => toggleExpanded(prompt.id)}
-                            className="text-blue-600 hover:text-blue-800 text-sm mt-2 font-medium"
-                          >
-                            {isExpanded ? "Show less" : "Show more"}
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Tags */}
-                      {prompt.tags && prompt.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {prompt.tags.map((tag) => (
-                            <span key={tag} className="prompt-tag">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-4 text-sm">
-                        <button
-                          onClick={() => toggleComments(prompt.id)}
-                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors"
-                        >
-                          <span>💬</span>
-                          <span>Comments</span>
-                        </button>
-
-                        <button
-                          onClick={() => toggleAITools(prompt.id)}
-                          className="flex items-center gap-1 text-purple-600 hover:text-purple-800 transition-colors"
-                        >
-                          <span>🤖</span>
-                          <span>AI Tools</span>
-                        </button>
-                      </div>
-
-                      {/* AI Tools Expanded */}
-                      {showAITools && (
-                        <div className="mt-4">
-                          <CompactAITools text={prompt.text} />
-                        </div>
-                      )}
-
-                      {/* Comments Expanded */}
-                      {showComments && (
-                        <Comments
-                          teamId={activeTeam}
-                          promptId={prompt.id}
-                          userRole={userRole}
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  prompt={prompt}
+                  profile={profile}
+                  isSelected={isSelected}
+                  isExpanded={isExpanded}
+                  showComments={showComments}
+                  showAITools={showAITools}
+                  canModify={canModifyPrompt(prompt)}
+                  onSelect={handlePromptSelection}
+                  onToggleExpanded={toggleExpanded}
+                  onToggleComments={toggleComments}
+                  onToggleAITools={toggleAITools}
+                  onCopy={copyToClipboard}
+                  onEdit={setEditingPrompt}
+                  onDelete={handleDelete}
+                  teamId={activeTeam}
+                  teamName={teamName}
+                />
               );
             })}
           </div>
@@ -801,7 +1547,7 @@ export default function PromptList({ activeTeam, userRole }) {
           {/* Pagination Controls - Bottom */}
           <PaginationControls
             pagination={pagination}
-            className="mt-6"
+            className="mt-8"
             onPageSizeChange={handlePageSizeChange}
           />
         </>

@@ -1,4 +1,4 @@
-// src/components/Favorites.jsx
+// src/components/Favorites.jsx - Updated to match demo UI
 import { useState, useEffect } from "react";
 import { db } from "../lib/firebase";
 import {
@@ -12,9 +12,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 
-// ----------------------
 // Hook: useFavorites
-// ----------------------
 export function useFavorites() {
   const { user } = useAuth();
   const [favorites, setFavorites] = useState([]);
@@ -34,21 +32,19 @@ export function useFavorites() {
       userFavoritesRef,
       (snap) => {
         const favs = snap.docs.map((docSnap) => ({
-          id: docSnap.id, // Firestore doc id (== prompt.id)
+          id: docSnap.id,
           ...docSnap.data(),
         }));
 
-        // Sort newest first
         favs.sort(
           (a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0)
         );
 
-        console.log("✅ Favorites snapshot:", favs); // DEBUG
         setFavorites(favs);
         setLoading(false);
       },
       (error) => {
-        console.error("❌ Error loading favorites:", error);
+        console.error("Error loading favorites:", error);
         setFavorites([]);
         setLoading(false);
       }
@@ -101,9 +97,7 @@ export function useFavorites() {
   };
 }
 
-// ----------------------
 // Component: FavoriteButton
-// ----------------------
 export function FavoriteButton({
   prompt,
   teamId,
@@ -139,59 +133,58 @@ export function FavoriteButton({
 
       const action = isFavorite(prompt.id) ? "removed from" : "added to";
       const toast = document.createElement("div");
-      toast.textContent = `Prompt ${action} favorites!`;
+      toast.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span>${isFavorite(prompt.id) ? "💔" : "⭐"}</span>
+          <span>Prompt ${action} favorites!</span>
+        </div>
+      `;
       toast.className =
-        "fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50";
+        "fixed top-4 right-4 glass-card px-4 py-3 rounded-lg z-50 text-sm";
+      toast.style.backgroundColor = "var(--card)";
+      toast.style.color = "var(--foreground)";
+      toast.style.border = "1px solid var(--primary)";
       document.body.appendChild(toast);
       setTimeout(() => {
         if (document.body.contains(toast)) {
           document.body.removeChild(toast);
         }
-      }, 2000);
+      }, 3000);
     } catch (error) {
-      console.error("❌ Error updating favorites:", error);
-
-      let errorMessage = "Failed to update favorites. ";
-      if (error.code === "permission-denied") {
-        errorMessage += "You don't have permission to save favorites.";
-      } else if (error.code === "unavailable") {
-        errorMessage += "Service is temporarily unavailable. Please try again.";
-      } else {
-        errorMessage += "Please try again.";
-      }
-
-      alert(errorMessage);
+      console.error("Error updating favorites:", error);
+      alert("Failed to update favorites. Please try again.");
     } finally {
       setIsToggling(false);
     }
   }
 
   const isFav = isFavorite(prompt.id);
-  const sizeClass = size === "small" ? "text-sm p-1" : "text-base p-2";
+  const sizeClass = size === "small" ? "p-1.5" : "p-2";
 
   return (
     <button
       onClick={handleToggle}
       disabled={isToggling}
-      className={`transition-colors rounded hover:bg-gray-100 ${sizeClass} ${className} ${
+      className={`rounded-lg transition-all duration-200 ${sizeClass} ${className} ${
         isFav
-          ? "text-yellow-500 hover:text-yellow-600"
-          : "text-gray-400 hover:text-yellow-500"
+          ? "text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20"
+          : "hover:bg-gray-100/10"
       }`}
+      style={{
+        color: isFav ? "#fbbf24" : "var(--muted-foreground)",
+      }}
       title={isFav ? "Remove from favorites" : "Add to favorites"}
     >
       {isToggling ? (
-        <div className="spinner w-4 h-4"></div>
+        <div className="neo-spinner w-4 h-4"></div>
       ) : (
-        <span>{isFav ? "★" : "☆"}</span>
+        <span className="text-lg">{isFav ? "★" : "☆"}</span>
       )}
     </button>
   );
 }
 
-// ----------------------
 // Component: FavoritesList
-// ----------------------
 export default function FavoritesList() {
   const { user } = useAuth();
   const { favorites, loading, removeFromFavorites } = useFavorites();
@@ -212,7 +205,7 @@ export default function FavoritesList() {
             profilesData[authorId] = userDoc.data();
           }
         } catch (error) {
-          console.error("❌ Error loading author profile:", error);
+          console.error("Error loading author profile:", error);
         }
       }
       setProfiles(profilesData);
@@ -223,14 +216,30 @@ export default function FavoritesList() {
   async function copyToClipboard(text) {
     try {
       await navigator.clipboard.writeText(text);
-      alert("Prompt copied to clipboard!");
+      const toast = document.createElement("div");
+      toast.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span>📋</span>
+          <span>Prompt copied to clipboard!</span>
+        </div>
+      `;
+      toast.className =
+        "fixed top-4 right-4 glass-card px-4 py-3 rounded-lg z-50 text-sm";
+      toast.style.backgroundColor = "var(--card)";
+      toast.style.color = "var(--foreground)";
+      toast.style.border = "1px solid var(--primary)";
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        if (document.body.contains(toast)) {
+          document.body.removeChild(toast);
+        }
+      }, 3000);
     } catch (error) {
-      console.error("❌ Failed to copy:", error);
+      console.error("Failed to copy:", error);
       alert("Failed to copy to clipboard.");
     }
   }
 
-  // ✅ FIX: don’t filter if search is empty
   const filteredFavorites = favorites.filter((favorite) => {
     if (!search.trim()) return true;
     return (
@@ -258,90 +267,157 @@ export default function FavoritesList() {
 
   if (loading) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-sm border">
-        <div className="flex items-center justify-center py-8">
-          <div className="spinner mr-3"></div>
-          <span className="text-gray-600">Loading favorites...</span>
-        </div>
+      <div className="glass-card p-8 text-center">
+        <div className="neo-spinner mx-auto mb-4"></div>
+        <p style={{ color: "var(--muted-foreground)" }}>
+          Loading your favorites...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-800">My Favorites</h2>
-        <span className="text-sm text-gray-500">{favorites.length} saved</span>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="glass-card p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: "var(--primary)" }}
+          >
+            <span
+              className="text-lg"
+              style={{ color: "var(--primary-foreground)" }}
+            >
+              ⭐
+            </span>
+          </div>
+          <div>
+            <h2
+              className="text-xl font-bold"
+              style={{ color: "var(--foreground)" }}
+            >
+              My Favorites
+            </h2>
+            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+              {favorites.length} {favorites.length === 1 ? "prompt" : "prompts"}{" "}
+              saved across all teams
+            </p>
+          </div>
+        </div>
+
+        {/* Search */}
+        {favorites.length > 0 && (
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search your favorites..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="search-input"
+            />
+          </div>
+        )}
       </div>
 
-      {favorites.length > 0 && (
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Search favorites..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-      )}
-
+      {/* Empty State */}
       {filteredFavorites.length === 0 ? (
-        <div className="text-center py-8">
+        <div className="glass-card p-12 text-center">
           {favorites.length === 0 ? (
             <>
-              <div className="text-gray-400 text-4xl mb-3">⭐</div>
-              <h3 className="text-lg font-medium text-gray-600 mb-2">
+              <div className="text-6xl mb-4">⭐</div>
+              <h3
+                className="text-lg font-semibold mb-2"
+                style={{ color: "var(--foreground)" }}
+              >
                 No favorites yet
               </h3>
-              <p className="text-gray-500 text-sm">
+              <p className="mb-6" style={{ color: "var(--muted-foreground)" }}>
                 Click the star icon on any prompt to save it to your favorites
               </p>
+              <div
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border"
+                style={{
+                  backgroundColor: "var(--secondary)",
+                  borderColor: "var(--border)",
+                  color: "var(--muted-foreground)",
+                }}
+              >
+                <span>💡</span>
+                <span className="text-sm">
+                  Favorites sync across all your teams
+                </span>
+              </div>
             </>
           ) : (
             <>
-              <div className="text-gray-400 text-4xl mb-3">🔍</div>
-              <h3 className="text-lg font-medium text-gray-600 mb-2">
+              <div className="text-6xl mb-4">🔍</div>
+              <h3
+                className="text-lg font-semibold mb-2"
+                style={{ color: "var(--foreground)" }}
+              >
                 No matching favorites
               </h3>
-              <p className="text-gray-500 text-sm">
+              <p style={{ color: "var(--muted-foreground)" }}>
                 Try adjusting your search terms
               </p>
             </>
           )}
         </div>
       ) : (
-        <div className="space-y-4">
+        /* Favorites Grid */
+        <div className="grid gap-4">
           {filteredFavorites.map((favorite) => {
             const author = profiles[favorite.originalAuthor];
 
             return (
               <div
                 key={favorite.id}
-                className="bg-gray-50 border border-gray-200 rounded-lg p-4"
+                className="glass-card p-6 hover:border-primary/50 transition-all duration-300"
               >
-                <div className="flex items-start justify-between mb-3">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-4">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-800 mb-1">
+                    <h3
+                      className="font-semibold text-lg mb-2"
+                      style={{ color: "var(--foreground)" }}
+                    >
                       {favorite.title}
                     </h3>
-                    <div className="flex items-center text-xs text-gray-500 gap-2 mb-2">
-                      <span>From: {favorite.teamName}</span>
+                    <div
+                      className="flex items-center gap-3 text-xs flex-wrap"
+                      style={{ color: "var(--muted-foreground)" }}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>🏢</span>
+                        <span>{favorite.teamName}</span>
+                      </div>
                       {author && (
                         <>
                           <span>•</span>
-                          <span>By: {author.name || author.email}</span>
+                          <div className="flex items-center gap-1">
+                            <span>👤</span>
+                            <span>{author.name || author.email}</span>
+                          </div>
                         </>
                       )}
                       <span>•</span>
-                      <span>Saved: {formatDate(favorite.addedAt)}</span>
+                      <div className="flex items-center gap-1">
+                        <span>📅</span>
+                        <span>Saved: {formatDate(favorite.addedAt)}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 ml-4">
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2 ml-4 flex-shrink-0">
                     <button
                       onClick={() => copyToClipboard(favorite.text)}
-                      className="text-blue-600 hover:text-blue-800 text-sm px-2 py-1 rounded transition-colors"
+                      className="p-2 rounded-lg transition-colors"
+                      style={{
+                        backgroundColor: "var(--secondary)",
+                        color: "var(--foreground)",
+                      }}
                       title="Copy to clipboard"
                     >
                       📋
@@ -349,26 +425,50 @@ export default function FavoritesList() {
 
                     <button
                       onClick={() => removeFromFavorites(favorite.id)}
-                      className="text-red-600 hover:text-red-800 text-sm px-2 py-1 rounded transition-colors"
+                      className="p-2 rounded-lg transition-colors"
+                      style={{
+                        backgroundColor: "var(--destructive)",
+                        color: "var(--destructive-foreground)",
+                      }}
                       title="Remove from favorites"
                     >
-                      Remove
+                      🗑️
                     </button>
                   </div>
                 </div>
 
-                <p className="text-gray-700 text-sm mb-3 whitespace-pre-wrap">
-                  {favorite.text}
-                </p>
+                {/* Content */}
+                <div className="mb-4">
+                  <div
+                    className="p-4 rounded-lg border"
+                    style={{
+                      backgroundColor: "var(--muted)",
+                      borderColor: "var(--border)",
+                    }}
+                  >
+                    <pre
+                      className="whitespace-pre-wrap text-sm leading-relaxed font-mono"
+                      style={{ color: "var(--foreground)" }}
+                    >
+                      {favorite.text}
+                    </pre>
+                  </div>
+                </div>
 
+                {/* Tags */}
                 {favorite.tags && favorite.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-2">
                     {favorite.tags.map((tag, index) => (
                       <span
                         key={index}
-                        className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
+                        className="inline-block px-2 py-1 rounded-full text-xs font-medium border"
+                        style={{
+                          backgroundColor: "var(--secondary)",
+                          color: "var(--secondary-foreground)",
+                          borderColor: "var(--border)",
+                        }}
                       >
-                        {tag}
+                        #{tag}
                       </span>
                     ))}
                   </div>
@@ -376,6 +476,23 @@ export default function FavoritesList() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Footer Stats */}
+      {favorites.length > 0 && (
+        <div className="glass-card p-4">
+          <div
+            className="flex items-center justify-between text-sm"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            <span>
+              {filteredFavorites.length} of {favorites.length} favorites shown
+            </span>
+            <span>
+              Across {new Set(favorites.map((f) => f.teamId)).size} teams
+            </span>
+          </div>
         </div>
       )}
     </div>

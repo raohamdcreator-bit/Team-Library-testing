@@ -1,4 +1,4 @@
-// src/components/PromptAnalytics.jsx
+// src/components/PromptAnalytics.jsx - Updated to match demo UI
 import { useState, useEffect, useMemo } from "react";
 import { db } from "../lib/firebase";
 import {
@@ -17,7 +17,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 
-// Hook for prompt ratings - FIXED
+// Hook for prompt ratings
 export function usePromptRating(teamId, promptId) {
   const { user } = useAuth();
   const [ratings, setRatings] = useState([]);
@@ -47,12 +47,10 @@ export function usePromptRating(teamId, promptId) {
           const ratingsData = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
           setRatings(ratingsData);
 
-          // Find user's rating
           const userRatingData = ratingsData.find(
             (r) => r.userId === user?.uid
           );
           setUserRating(userRatingData?.rating || null);
-
           setLoading(false);
         },
         (error) => {
@@ -70,14 +68,12 @@ export function usePromptRating(teamId, promptId) {
     }
   }, [teamId, promptId, user?.uid]);
 
-  // Calculate average rating
   const averageRating = useMemo(() => {
     if (ratings.length === 0) return 0;
     const sum = ratings.reduce((acc, rating) => acc + rating.rating, 0);
     return Math.round((sum / ratings.length) * 10) / 10;
   }, [ratings]);
 
-  // Rate prompt - FIXED
   async function ratePrompt(rating) {
     if (!user || !teamId || !promptId || rating < 1 || rating > 5) return;
 
@@ -91,15 +87,12 @@ export function usePromptRating(teamId, promptId) {
         "ratings",
         user.uid
       );
-
-      // Set the rating
       await setDoc(ratingRef, {
         userId: user.uid,
         rating: rating,
         createdAt: serverTimestamp(),
       });
 
-      // Update prompt stats
       const promptRef = doc(db, "teams", teamId, "prompts", promptId);
       const promptSnap = await getDoc(promptRef);
 
@@ -113,7 +106,6 @@ export function usePromptRating(teamId, promptId) {
           5: 0,
         };
 
-        // If user had a previous rating, decrease that count
         if (userRating) {
           currentRatings[userRating] = Math.max(
             0,
@@ -121,10 +113,8 @@ export function usePromptRating(teamId, promptId) {
           );
         }
 
-        // Increase count for new rating
         currentRatings[rating] = (currentRatings[rating] || 0) + 1;
 
-        // Calculate new totals
         const totalRatings = Object.values(currentRatings).reduce(
           (sum, count) => sum + count,
           0
@@ -148,7 +138,6 @@ export function usePromptRating(teamId, promptId) {
     }
   }
 
-  // Remove rating - FIXED
   async function removeRating() {
     if (!user || !teamId || !promptId || !userRating) return;
 
@@ -164,7 +153,6 @@ export function usePromptRating(teamId, promptId) {
       );
       await deleteDoc(ratingRef);
 
-      // Update prompt stats
       const promptRef = doc(db, "teams", teamId, "prompts", promptId);
       const promptSnap = await getDoc(promptRef);
 
@@ -178,13 +166,11 @@ export function usePromptRating(teamId, promptId) {
           5: 0,
         };
 
-        // Decrease count for removed rating
         currentRatings[userRating] = Math.max(
           0,
           (currentRatings[userRating] || 0) - 1
         );
 
-        // Calculate new totals
         const totalRatings = Object.values(currentRatings).reduce(
           (sum, count) => sum + count,
           0
@@ -253,7 +239,7 @@ export function StarRating({
             className={`${
               star <= (hoverRating || rating)
                 ? "text-yellow-400"
-                : "text-gray-300"
+                : "text-gray-500"
             } transition-all duration-150`}
           >
             ★
@@ -262,143 +248,6 @@ export function StarRating({
       ))}
     </div>
   );
-}
-
-// Prompt rating component
-export function PromptRating({ teamId, promptId, compact = false }) {
-  const {
-    userRating,
-    averageRating,
-    totalRatings,
-    loading,
-    ratePrompt,
-    removeRating,
-  } = usePromptRating(teamId, promptId);
-
-  const [isRating, setIsRating] = useState(false);
-
-  const handleRate = async (rating) => {
-    setIsRating(true);
-    try {
-      await ratePrompt(rating);
-    } catch (error) {
-      alert("Failed to rate prompt. Please try again.");
-    } finally {
-      setIsRating(false);
-    }
-  };
-
-  const handleRemove = async () => {
-    setIsRating(true);
-    try {
-      await removeRating();
-    } catch (error) {
-      alert("Failed to remove rating. Please try again.");
-    } finally {
-      setIsRating(false);
-    }
-  };
-
-  if (loading) {
-    return <div className="text-xs text-gray-500">Loading ratings...</div>;
-  }
-
-  if (compact) {
-    return (
-      <div className="flex items-center gap-2">
-        <StarRating rating={averageRating} readonly size="small" />
-        <span className="text-xs text-gray-500">
-          {averageRating > 0 ? averageRating.toFixed(1) : "No ratings"}
-          {totalRatings > 0 && ` (${totalRatings})`}
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <StarRating rating={averageRating} readonly size="small" />
-          <span className="text-sm text-gray-600">
-            {totalRatings === 0
-              ? "No ratings yet"
-              : `${averageRating.toFixed(1)} (${totalRatings} ${
-                  totalRatings === 1 ? "rating" : "ratings"
-                })`}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-600">Your rating:</span>
-        <StarRating
-          rating={userRating || 0}
-          onRate={handleRate}
-          disabled={isRating}
-        />
-        {userRating && (
-          <button
-            onClick={handleRemove}
-            disabled={isRating}
-            className="text-xs text-red-600 hover:text-red-800 transition-colors"
-          >
-            Remove
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Usage analytics hook
-export function useUsageAnalytics(teamId, promptId) {
-  const [analytics, setAnalytics] = useState({
-    views: 0,
-    copies: 0,
-    favorites: 0,
-    comments: 0,
-    lastUsed: null,
-  });
-
-  useEffect(() => {
-    if (!teamId || !promptId) return;
-
-    const promptRef = doc(db, "teams", teamId, "prompts", promptId);
-    const unsub = onSnapshot(promptRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setAnalytics(
-          data.stats || {
-            views: 0,
-            copies: 0,
-            favorites: 0,
-            comments: 0,
-            lastUsed: null,
-          }
-        );
-      }
-    });
-
-    return () => unsub();
-  }, [teamId, promptId]);
-
-  // Track usage
-  async function trackUsage(action) {
-    if (!teamId || !promptId) return;
-
-    try {
-      const promptRef = doc(db, "teams", teamId, "prompts", promptId);
-      await updateDoc(promptRef, {
-        [`stats.${action}`]: increment(1),
-        "stats.lastUsed": serverTimestamp(),
-      });
-    } catch (error) {
-      console.error(`Error tracking ${action}:`, error);
-    }
-  }
-
-  return { analytics, trackUsage };
 }
 
 // Team analytics dashboard
@@ -420,7 +269,6 @@ export function TeamAnalytics({ teamId }) {
       return;
     }
 
-    // Real-time analytics updates
     const promptsRef = collection(db, "teams", teamId, "prompts");
     const unsub = onSnapshot(
       promptsRef,
@@ -428,7 +276,6 @@ export function TeamAnalytics({ teamId }) {
         try {
           const allPrompts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-          // Calculate team totals
           const totals = allPrompts.reduce(
             (acc, prompt) => {
               const stats = prompt.stats || {};
@@ -453,7 +300,6 @@ export function TeamAnalytics({ teamId }) {
             }
           );
 
-          // Get top rated prompts
           const topPrompts = allPrompts
             .filter((p) => p.stats?.averageRating > 0)
             .sort(
@@ -488,71 +334,177 @@ export function TeamAnalytics({ teamId }) {
 
   if (loading) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-sm border">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="spinner w-4 h-4"></div>
-          <span className="text-gray-600">Loading analytics...</span>
-        </div>
+      <div className="glass-card p-8 text-center">
+        <div className="neo-spinner mx-auto mb-4"></div>
+        <p style={{ color: "var(--muted-foreground)" }}>
+          Loading team analytics...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border">
-      <h3 className="text-lg font-semibold mb-6 text-gray-800">
-        Team Analytics
-      </h3>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="glass-card p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: "var(--primary)" }}
+          >
+            <span
+              className="text-lg"
+              style={{ color: "var(--primary-foreground)" }}
+            >
+              📊
+            </span>
+          </div>
+          <div>
+            <h3
+              className="text-lg font-semibold"
+              style={{ color: "var(--foreground)" }}
+            >
+              Team Analytics
+            </h3>
+            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+              Performance insights and usage statistics
+            </p>
+          </div>
+        </div>
+      </div>
 
-      {/* Overview Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="text-center p-4 bg-blue-50 rounded-lg">
-          <div className="text-2xl font-bold text-blue-600">
+      {/* Overview Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="glass-card p-6 text-center hover:border-primary/50 transition-all duration-300">
+          <div
+            className="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-3"
+            style={{
+              backgroundColor: "var(--primary)",
+              color: "var(--primary-foreground)",
+            }}
+          >
+            📝
+          </div>
+          <div
+            className="text-2xl font-bold mb-1"
+            style={{ color: "var(--foreground)" }}
+          >
             {analytics.totalPrompts}
           </div>
-          <div className="text-sm text-blue-800">Total Prompts</div>
+          <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+            Total Prompts
+          </div>
         </div>
 
-        <div className="text-center p-4 bg-green-50 rounded-lg">
-          <div className="text-2xl font-bold text-green-600">
+        <div className="glass-card p-6 text-center hover:border-primary/50 transition-all duration-300">
+          <div
+            className="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-3"
+            style={{
+              backgroundColor: "var(--secondary)",
+              color: "var(--secondary-foreground)",
+            }}
+          >
+            📋
+          </div>
+          <div
+            className="text-2xl font-bold mb-1"
+            style={{ color: "var(--foreground)" }}
+          >
             {analytics.totalCopies}
           </div>
-          <div className="text-sm text-green-800">Times Copied</div>
+          <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+            Times Copied
+          </div>
         </div>
 
-        <div className="text-center p-4 bg-purple-50 rounded-lg">
-          <div className="text-2xl font-bold text-purple-600">
+        <div className="glass-card p-6 text-center hover:border-primary/50 transition-all duration-300">
+          <div
+            className="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-3"
+            style={{
+              backgroundColor: "var(--accent)",
+              color: "var(--accent-foreground)",
+            }}
+          >
+            💬
+          </div>
+          <div
+            className="text-2xl font-bold mb-1"
+            style={{ color: "var(--foreground)" }}
+          >
             {analytics.totalComments}
           </div>
-          <div className="text-sm text-purple-800">Comments</div>
+          <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+            Comments
+          </div>
         </div>
 
-        <div className="text-center p-4 bg-yellow-50 rounded-lg">
-          <div className="text-2xl font-bold text-yellow-600">
+        <div className="glass-card p-6 text-center hover:border-primary/50 transition-all duration-300">
+          <div
+            className="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-3"
+            style={{
+              backgroundColor: "var(--muted)",
+              color: "var(--foreground)",
+            }}
+          >
+            ⭐
+          </div>
+          <div
+            className="text-2xl font-bold mb-1"
+            style={{ color: "var(--foreground)" }}
+          >
             {analytics.averageRating > 0
               ? analytics.averageRating.toFixed(1)
               : "—"}
           </div>
-          <div className="text-sm text-yellow-800">Avg Rating</div>
+          <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+            Avg Rating
+          </div>
         </div>
       </div>
 
-      {/* Top Prompts */}
+      {/* Top Rated Prompts */}
       {analytics.topPrompts.length > 0 && (
-        <div>
-          <h4 className="font-medium text-gray-800 mb-3">Top Rated Prompts</h4>
-          <div className="space-y-2">
+        <div className="glass-card p-6">
+          <h4
+            className="font-semibold mb-4"
+            style={{ color: "var(--foreground)" }}
+          >
+            🏆 Top Performing Prompts
+          </h4>
+          <div className="space-y-3">
             {analytics.topPrompts.map((prompt, index) => (
               <div
                 key={prompt.id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded"
+                className="flex items-center justify-between p-3 rounded-lg border"
+                style={{
+                  backgroundColor: "var(--secondary)",
+                  borderColor: "var(--border)",
+                }}
               >
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-800 truncate">
-                    #{index + 1} {prompt.title}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                    style={{
+                      backgroundColor: "var(--primary)",
+                      color: "var(--primary-foreground)",
+                    }}
+                  >
+                    #{index + 1}
                   </div>
-                  <div className="text-sm text-gray-500">
-                    {prompt.stats?.totalCopies || 0} copies •{" "}
-                    {prompt.stats?.comments || 0} comments
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="font-medium truncate"
+                      style={{ color: "var(--foreground)" }}
+                    >
+                      {prompt.title}
+                    </div>
+                    <div
+                      className="text-sm"
+                      style={{ color: "var(--muted-foreground)" }}
+                    >
+                      {prompt.stats?.totalCopies || 0} copies •{" "}
+                      {prompt.stats?.comments || 0} comments
+                    </div>
                   </div>
                 </div>
                 <div className="ml-4">
@@ -567,6 +519,150 @@ export function TeamAnalytics({ teamId }) {
           </div>
         </div>
       )}
+
+      {/* Usage Insights */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="glass-card p-6">
+          <h4
+            className="font-semibold mb-4"
+            style={{ color: "var(--foreground)" }}
+          >
+            📈 Usage Trends
+          </h4>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span
+                className="text-sm"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                Most Active Feature
+              </span>
+              <span
+                className="font-medium"
+                style={{ color: "var(--foreground)" }}
+              >
+                {analytics.totalCopies > analytics.totalComments
+                  ? "Copying"
+                  : "Commenting"}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span
+                className="text-sm"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                Engagement Rate
+              </span>
+              <span
+                className="font-medium"
+                style={{ color: "var(--foreground)" }}
+              >
+                {analytics.totalPrompts > 0
+                  ? Math.round(
+                      ((analytics.totalCopies + analytics.totalComments) /
+                        analytics.totalPrompts) *
+                        100
+                    ) / 100
+                  : 0}{" "}
+                per prompt
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span
+                className="text-sm"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                Quality Score
+              </span>
+              <span
+                className="font-medium"
+                style={{ color: "var(--foreground)" }}
+              >
+                {analytics.averageRating > 0
+                  ? `${((analytics.averageRating / 5) * 100).toFixed(0)}%`
+                  : "No ratings"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-card p-6">
+          <h4
+            className="font-semibold mb-4"
+            style={{ color: "var(--foreground)" }}
+          >
+            🎯 Team Health
+          </h4>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between mb-1">
+                <span
+                  className="text-sm"
+                  style={{ color: "var(--muted-foreground)" }}
+                >
+                  Collaboration
+                </span>
+                <span
+                  className="text-sm font-medium"
+                  style={{ color: "var(--foreground)" }}
+                >
+                  {analytics.totalComments > 0 ? "Active" : "Growing"}
+                </span>
+              </div>
+              <div
+                className="w-full h-2 rounded-full"
+                style={{ backgroundColor: "var(--muted)" }}
+              >
+                <div
+                  className="h-2 rounded-full transition-all duration-300"
+                  style={{
+                    backgroundColor: "var(--primary)",
+                    width: `${Math.min(
+                      100,
+                      (analytics.totalComments /
+                        Math.max(1, analytics.totalPrompts)) *
+                        100
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between mb-1">
+                <span
+                  className="text-sm"
+                  style={{ color: "var(--muted-foreground)" }}
+                >
+                  Content Quality
+                </span>
+                <span
+                  className="text-sm font-medium"
+                  style={{ color: "var(--foreground)" }}
+                >
+                  {analytics.averageRating >= 4
+                    ? "Excellent"
+                    : analytics.averageRating >= 3
+                    ? "Good"
+                    : "Improving"}
+                </span>
+              </div>
+              <div
+                className="w-full h-2 rounded-full"
+                style={{ backgroundColor: "var(--muted)" }}
+              >
+                <div
+                  className="h-2 rounded-full transition-all duration-300"
+                  style={{
+                    backgroundColor: "var(--accent)",
+                    width: `${(analytics.averageRating / 5) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

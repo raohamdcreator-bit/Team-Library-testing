@@ -1,4 +1,4 @@
-// src/components/PromptForm.jsx
+// src/components/PromptForm.jsx - Updated to match demo UI
 import { useState, useEffect } from "react";
 
 export default function PromptForm({
@@ -50,7 +50,6 @@ export default function PromptForm({
         await onSubmit(prompt);
       }
 
-      // Reset form only if not editing or after successful edit
       if (!editingPrompt) {
         setTitle("");
         setText("");
@@ -76,16 +75,45 @@ export default function PromptForm({
   const isEditing = Boolean(editingPrompt);
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border mb-6">
-      <h3 className="text-lg font-semibold mb-4 text-gray-800">
-        {isEditing ? "Edit Prompt" : "Create New Prompt"}
-      </h3>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div
+      className="glass-card p-6 mb-6"
+      style={{ border: "1px solid var(--border)" }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-6">
+        <div
+          className="w-10 h-10 rounded-lg flex items-center justify-center"
+          style={{ backgroundColor: "var(--primary)" }}
+        >
+          <span
+            className="text-lg"
+            style={{ color: "var(--primary-foreground)" }}
+          >
+            {isEditing ? "✏️" : "➕"}
+          </span>
+        </div>
         <div>
+          <h3
+            className="text-lg font-semibold"
+            style={{ color: "var(--foreground)" }}
+          >
+            {isEditing ? "Edit Prompt" : "Create New Prompt"}
+          </h3>
+          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+            {isEditing
+              ? "Update your prompt details"
+              : "Add a new prompt to your team library"}
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Title Input */}
+        <div className="space-y-2">
           <label
             htmlFor="prompt-title"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium"
+            style={{ color: "var(--foreground)" }}
           >
             Title *
           </label>
@@ -93,73 +121,127 @@ export default function PromptForm({
             id="prompt-title"
             type="text"
             placeholder="Enter a descriptive title for your prompt"
-            className="form-input w-full"
+            className="form-input"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
             disabled={isSubmitting}
             maxLength={100}
           />
-          <p className="text-xs text-gray-500 mt-1">
-            {title.length}/100 characters
-          </p>
+          <div
+            className="flex justify-between text-xs"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            <span>
+              A clear, descriptive title helps others understand your prompt's
+              purpose
+            </span>
+            <span>{title.length}/100</span>
+          </div>
         </div>
 
-        <div>
+        {/* Prompt Content */}
+        <div className="space-y-2">
           <label
             htmlFor="prompt-text"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium"
+            style={{ color: "var(--foreground)" }}
           >
             Prompt Content *
           </label>
-          <textarea
-            id="prompt-text"
-            placeholder="Enter your AI prompt here..."
-            className="form-input w-full min-h-32 resize-y"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            required
-            disabled={isSubmitting}
-            rows={6}
-          />
-          <p className="text-xs text-gray-500 mt-1">{text.length} characters</p>
+          <div className="relative">
+            <textarea
+              id="prompt-text"
+              placeholder="Write your AI prompt here. Be specific about what you want the AI to do, provide context, and include any formatting instructions..."
+              className="form-input min-h-32 resize-y"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              required
+              disabled={isSubmitting}
+              rows={8}
+              style={{
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: "0.875rem",
+              }}
+            />
+          </div>
+          <div
+            className="flex justify-between text-xs"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            <span>
+              Write clear, specific instructions for best AI performance
+            </span>
+            <span>
+              {text.length} characters •{" "}
+              {text.trim().split(/\s+/).filter(Boolean).length} words
+            </span>
+          </div>
         </div>
 
-        <div>
+        {/* Tags Input */}
+        <div className="space-y-2">
           <label
             htmlFor="prompt-tags"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium"
+            style={{ color: "var(--foreground)" }}
           >
             Tags
           </label>
           <input
             id="prompt-tags"
             type="text"
-            placeholder="e.g. writing, creative, marketing (comma separated)"
-            className="form-input w-full"
+            placeholder="e.g. writing, creative, marketing, code"
+            className="form-input"
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             disabled={isSubmitting}
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Add tags to help organize and find your prompts
-          </p>
+          <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+            Add comma-separated tags to help organize and discover prompts
+          </div>
+
+          {/* Tag Preview */}
+          {tags.trim() && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {tags.split(",").map((tag, index) => {
+                const cleanTag = tag.trim();
+                if (!cleanTag) return null;
+                return (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+                    style={{
+                      backgroundColor: "var(--secondary)",
+                      color: "var(--secondary-foreground)",
+                      borderColor: "var(--border)",
+                    }}
+                  >
+                    #{cleanTag}
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        <div className="flex gap-3 pt-2">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3 pt-4">
           <button
             type="submit"
             disabled={isSubmitting || !title.trim() || !text.trim()}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary px-6 py-2.5 flex items-center gap-2"
           >
-            {isSubmitting && <div className="spinner"></div>}
-            {isSubmitting
-              ? isEditing
-                ? "Updating..."
-                : "Creating..."
-              : isEditing
-              ? "Update Prompt"
-              : "Create Prompt"}
+            {isSubmitting && <div className="neo-spinner w-4 h-4"></div>}
+            <span>
+              {isSubmitting
+                ? isEditing
+                  ? "Updating..."
+                  : "Creating..."
+                : isEditing
+                ? "Update Prompt"
+                : "Create Prompt"}
+            </span>
           </button>
 
           {isEditing && (
@@ -167,7 +249,7 @@ export default function PromptForm({
               type="button"
               onClick={handleCancel}
               disabled={isSubmitting}
-              className="btn-secondary"
+              className="btn-secondary px-6 py-2.5"
             >
               Cancel
             </button>
@@ -182,11 +264,40 @@ export default function PromptForm({
                 setTags("");
               }}
               disabled={isSubmitting}
-              className="text-gray-600 hover:text-gray-800 px-3 py-2 rounded transition-colors"
+              className="px-4 py-2.5 text-sm transition-colors rounded-lg"
+              style={{
+                color: "var(--muted-foreground)",
+                ":hover": { color: "var(--foreground)" },
+              }}
             >
-              Clear
+              Clear Form
             </button>
           )}
+        </div>
+
+        {/* Help Text */}
+        <div
+          className="p-4 rounded-lg border"
+          style={{
+            backgroundColor: "var(--secondary)",
+            borderColor: "var(--border)",
+          }}
+        >
+          <h4
+            className="text-sm font-medium mb-2"
+            style={{ color: "var(--foreground)" }}
+          >
+            💡 Tips for effective prompts:
+          </h4>
+          <ul
+            className="text-xs space-y-1"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            <li>• Be specific about the desired output format</li>
+            <li>• Provide relevant context and examples</li>
+            <li>• Use clear, actionable language</li>
+            <li>• Test your prompt before sharing with the team</li>
+          </ul>
         </div>
       </form>
     </div>
