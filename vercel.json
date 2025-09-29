@@ -1,19 +1,7 @@
 {
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": { "outputDirectory": "dist" }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
