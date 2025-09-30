@@ -1,52 +1,56 @@
-// STEP 1: Create api/send-invite.js in your project root
-// File: api/send-invite.js
-
+// api/send-invite.js - FIXED for Vercel
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// ✅ IMPORTANT: Vercel requires default export
 export default async function handler(req, res) {
-  // Enable CORS for your domain
+  // ✅ Set CORS headers FIRST
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
+  // ✅ Handle OPTIONS preflight request
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
+  // ✅ Only allow POST
   if (req.method !== "POST") {
+    console.log(`❌ Method ${req.method} not allowed`);
     return res.status(405).json({ 
       success: false, 
-      error: "Method not allowed" 
-    });
-  }
-
-  const { to, link, teamName, invitedBy, role } = req.body;
-
-  // Validate required fields
-  if (!to || !link || !teamName) {
-    return res.status(400).json({ 
-      success: false, 
-      error: "Missing required fields: to, link, teamName" 
-    });
-  }
-
-  // Check if Resend API key is configured
-  if (!process.env.RESEND_API_KEY) {
-    console.error("❌ RESEND_API_KEY environment variable is not set");
-    return res.status(500).json({ 
-      success: false, 
-      error: "Email service not configured - missing API key" 
+      error: `Method ${req.method} Not Allowed. Use POST.` 
     });
   }
 
   try {
+    const { to, link, teamName, invitedBy, role } = req.body;
+
+    // Validate required fields
+    if (!to || !link || !teamName) {
+      console.log("❌ Missing required fields");
+      return res.status(400).json({ 
+        success: false, 
+        error: "Missing required fields: to, link, teamName" 
+      });
+    }
+
+    // Check if Resend API key is configured
+    if (!process.env.RESEND_API_KEY) {
+      console.error("❌ RESEND_API_KEY not configured");
+      return res.status(500).json({ 
+        success: false, 
+        error: "Email service not configured" 
+      });
+    }
+
     console.log(`📧 Sending email to: ${to} for team: ${teamName}`);
 
+    // Send email
     const emailData = await resend.emails.send({
-      from: "team-invites@resend.dev", // Use Resend's default domain or your verified domain
+      from: "Prompt Teams <onboarding@resend.dev>",
       to: to,
       subject: `🎉 You've been invited to join ${teamName}`,
       html: `
@@ -57,53 +61,67 @@ export default async function handler(req, res) {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Team Invitation</title>
         </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
           
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">🚀 You've been invited!</h1>
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; border-radius: 12px; text-align: center; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);">
+            <h1 style="color: white; margin: 0; font-size: 32px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+              🚀 You've been invited!
+            </h1>
           </div>
 
-          <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-bottom: 25px;">
-            <p style="font-size: 16px; margin: 0 0 15px 0;">Hello there! 👋</p>
-            <p style="font-size: 16px; margin: 0 0 15px 0;">
-              <strong>${invitedBy || 'Someone'}</strong> has invited you to join 
-              <strong style="color: #667eea;">${teamName}</strong> as a 
-              <strong>${role || 'member'}</strong>.
+          <!-- Main Content -->
+          <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <p style="font-size: 18px; margin: 0 0 20px 0; color: #2c3e50;">
+              Hello! 👋
             </p>
-            <p style="font-size: 14px; color: #666; margin: 0;">
-              Join your team to start collaborating on AI prompts and boost productivity together.
+            <p style="font-size: 16px; margin: 0 0 20px 0; color: #34495e; line-height: 1.8;">
+              <strong style="color: #667eea;">${invitedBy || 'A team member'}</strong> has invited you to join 
+              <strong style="color: #764ba2;">${teamName}</strong> as a 
+              <strong style="color: #667eea;">${role || 'member'}</strong>.
+            </p>
+            <p style="font-size: 15px; color: #7f8c8d; margin: 0; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #667eea; border-radius: 4px;">
+              💡 Join your team to start collaborating on AI prompts and boost productivity together.
             </p>
           </div>
 
+          <!-- CTA Button -->
           <div style="text-align: center; margin: 40px 0;">
             <a href="${link}" 
                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                       color: white; 
-                      padding: 15px 30px; 
+                      padding: 18px 40px; 
                       text-decoration: none; 
-                      border-radius: 8px; 
-                      font-weight: 600; 
+                      border-radius: 10px; 
+                      font-weight: 700; 
                       font-size: 16px;
                       display: inline-block;
-                      transition: transform 0.2s;">
-              Accept Invitation
+                      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                      transition: all 0.3s ease;">
+              ✨ Accept Invitation
             </a>
+            <p style="margin-top: 15px; font-size: 13px; color: #95a5a6;">
+              This invitation is personal and cannot be shared
+            </p>
           </div>
 
-          <div style="background: #e9ecef; padding: 20px; border-radius: 8px; margin-top: 30px;">
-            <p style="font-size: 14px; color: #666; margin: 0 0 10px 0;">
-              <strong>Can't click the button?</strong> Copy and paste this link into your browser:
+          <!-- Link Fallback -->
+          <div style="background: white; padding: 20px; border-radius: 8px; margin-top: 30px; border: 1px solid #e1e8ed;">
+            <p style="font-size: 13px; color: #7f8c8d; margin: 0 0 10px 0; font-weight: 600;">
+              📎 Can't click the button? Copy this link:
             </p>
-            <p style="font-size: 12px; color: #007bff; word-break: break-all; margin: 0;">
+            <p style="font-size: 12px; color: #3498db; word-break: break-all; margin: 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px; font-family: monospace;">
               ${link}
             </p>
           </div>
 
-          <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #dee2e6;">
-            <p style="font-size: 12px; color: #868e96; margin: 0;">
+          <!-- Footer -->
+          <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 2px solid #e1e8ed;">
+            <p style="font-size: 13px; color: #95a5a6; margin: 0 0 8px 0;">
               If you don't want to join this team, you can safely ignore this email.
-              <br>
-              This invitation was sent from Prompt Teams.
+            </p>
+            <p style="font-size: 12px; color: #bdc3c7; margin: 0;">
+              Sent by <strong>Prompt Teams</strong> • Powered by AI collaboration
             </p>
           </div>
         </body>
@@ -115,28 +133,28 @@ export default async function handler(req, res) {
     
     return res.status(200).json({ 
       success: true, 
-      data: emailData,
+      emailId: emailData.id,
       message: "Invitation email sent successfully"
     });
     
   } catch (error) {
     console.error("❌ Email sending failed:", error);
     
-    // Provide specific error messages based on common issues
+    // Provide specific error messages
     let errorMessage = "Failed to send email";
     let statusCode = 500;
     
-    if (error.message.includes("API key")) {
+    if (error.message?.includes("API key")) {
       errorMessage = "Invalid email service configuration";
       statusCode = 500;
-    } else if (error.message.includes("rate limit") || error.message.includes("quota")) {
+    } else if (error.message?.includes("rate limit") || error.message?.includes("quota")) {
       errorMessage = "Email rate limit exceeded. Please try again later.";
       statusCode = 429;
-    } else if (error.message.includes("domain")) {
+    } else if (error.message?.includes("domain")) {
       errorMessage = "Email domain not verified";
       statusCode = 500;
-    } else if (error.message.includes("invalid") && error.message.includes("email")) {
-      errorMessage = "Invalid email address format";
+    } else if (error.message?.includes("invalid") && error.message?.includes("email")) {
+      errorMessage = "Invalid email address";
       statusCode = 400;
     }
     
@@ -147,46 +165,3 @@ export default async function handler(req, res) {
     });
   }
 }
-
-// // STEP 2: Create vercel.json in your project root
-// // File: vercel.json
-// {
-//   "functions": {
-//     "api/*.js": {
-//       "runtime": "nodejs18.x"
-//     }
-//   },
-//   "rewrites": [
-//     {
-//       "source": "/api/(.*)",
-//       "destination": "/api/$1"
-//     }
-//   ]
-// }
-
-// STEP 3: Update your package.json
-// Add resend to dependencies:
-// {
-//   "dependencies": {
-//     "resend": "^2.0.0";
-//   }
-// }
-
-// // STEP 4: Environment Variables Setup
-// // Create .env.local file in your project root:
-// RESEND_API_KEY=your_resend_api_key_here
-
-// // STEP 5: For production deployment on Vercel:
-// // 1. Go to Vercel dashboard > Your project > Settings > Environment Variables
-// // 2. Add: RESEND_API_KEY with your actual Resend API key
-// // 3. Make sure it's available for Production, Preview, and Development
-
-// // STEP 6: Get your Resend API Key
-// // 1. Go to https://resend.com/
-// // 2. Sign up for a free account
-// // 3. Go to API Keys section
-// // 4. Create a new API key
-// // 5. Copy the key to your environment variables
-
-// // STEP 7: Updated TeamInviteForm.jsx (if you want better error handling)
-// // This is optional - your current fixed version should work fine
