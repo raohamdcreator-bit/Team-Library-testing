@@ -17,6 +17,7 @@ import { useAuth } from "../context/AuthContext";
 import PromptForm from "./PromptForm";
 import { FavoriteButton, useFavorites } from "./Favorites";
 import Comments from "./Comments";
+import AIEnhancementTools from "./AIEnhancementTools";
 
 // Fixed cache hook implementation
 const useCache = (key, fetchFn, options = {}) => {
@@ -34,10 +35,6 @@ const useCache = (key, fetchFn, options = {}) => {
     }
     setLoading(false);
   }, [key, options.enabled]); // Stable dependencies only
-
-  // useEffect(() => {
-  //   refresh();
-  // }, [key, options.enabled]); // Don't include refresh in dependencies
 
   return { data, loading, refresh };
 };
@@ -409,90 +406,6 @@ const ActivityLogger = {
   },
 };
 
-// Enhanced AI Tools Component
-const CyberAITools = ({ text }) => (
-  <div className="space-y-4">
-    <div className="flex items-center gap-3 text-sm text-purple-300">
-      <div className="w-3 h-3 bg-purple-400 rounded-full neo-pulse"></div>
-      <span className="font-semibold">AI Enhancement Tools</span>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <button className="p-4 glass-card rounded-xl text-sm text-slate-300 hover:text-purple-300 transition-all duration-300 hover:scale-105 cyber-glow">
-        <div className="flex items-center gap-2">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
-          </svg>
-          Optimize Prompt
-        </div>
-      </button>
-      <button className="p-4 glass-card rounded-xl text-sm text-slate-300 hover:text-purple-300 transition-all duration-300 hover:scale-105 cyber-glow">
-        <div className="flex items-center gap-2">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          Generate Variations
-        </div>
-      </button>
-      <button className="p-4 glass-card rounded-xl text-sm text-slate-300 hover:text-purple-300 transition-all duration-300 hover:scale-105 cyber-glow">
-        <div className="flex items-center gap-2">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-            />
-          </svg>
-          Analyze Complexity
-        </div>
-      </button>
-      <button className="p-4 glass-card rounded-xl text-sm text-slate-300 hover:text-purple-300 transition-all duration-300 hover:scale-105 cyber-glow">
-        <div className="flex items-center gap-2">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-            />
-          </svg>
-          Suggest Improvements
-        </div>
-      </button>
-    </div>
-  </div>
-);
-
 // Enhanced Cyber Prompt Card Component
 const CyberPromptCard = ({
   prompt,
@@ -500,12 +413,11 @@ const CyberPromptCard = ({
   isSelected,
   isExpanded,
   showComments,
-  showAITools,
   canModify,
   onSelect,
   onToggleExpanded,
   onToggleComments,
-  onToggleAITools,
+  onOpenAITools,
   onCopy,
   onEdit,
   onDelete,
@@ -893,12 +805,8 @@ const CyberPromptCard = ({
           </button>
 
           <button
-            onClick={() => onToggleAITools(prompt.id)}
-            className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-base font-medium transition-all duration-300 will-change-transform ${
-              showAITools
-                ? "glass-card cyber-glow bg-purple-500/20 text-purple-300 scale-105"
-                : "glass-card text-slate-400 hover:text-purple-300 hover:scale-105"
-            }`}
+            onClick={() => onOpenAITools(prompt)}
+            className="flex items-center gap-3 px-6 py-3 rounded-2xl text-base font-medium transition-all duration-300 will-change-transform glass-card text-slate-400 hover:text-purple-300 hover:scale-105"
           >
             <svg
               className="w-5 h-5"
@@ -913,45 +821,29 @@ const CyberPromptCard = ({
                 d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
               />
             </svg>
-            AI Interface
+            AI Enhancement Tools
           </button>
         </div>
       </div>
 
       {/* Expanded Cyber Interfaces */}
-      {(showComments || showAITools) && (
+      {showComments && (
         <div className="border-t border-white/10 p-8 bg-gradient-to-r from-cyan-900/20 to-purple-900/20">
-          {showAITools && (
-            <div className="mb-8">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-3 h-3 bg-purple-400 rounded-full neo-pulse"></div>
-                <h4 className="text-lg font-bold text-purple-300">
-                  AI Neural Interface
-                </h4>
-              </div>
-              <div className="glass-card p-6 rounded-2xl cyber-glow">
-                <CyberAITools text={prompt.text} />
-              </div>
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-3 h-3 bg-cyan-400 rounded-full neo-pulse"></div>
+              <h4 className="text-lg font-bold text-cyan-300">
+                Neural Comments
+              </h4>
             </div>
-          )}
-
-          {showComments && (
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-3 h-3 bg-cyan-400 rounded-full neo-pulse"></div>
-                <h4 className="text-lg font-bold text-cyan-300">
-                  Neural Comments
-                </h4>
-              </div>
-              <div className="glass-card p-6 rounded-2xl cyber-glow">
-                <Comments
-                  teamId={teamId}
-                  promptId={prompt.id}
-                  userRole="member"
-                />
-              </div>
+            <div className="glass-card p-6 rounded-2xl cyber-glow">
+              <Comments
+                teamId={teamId}
+                promptId={prompt.id}
+                userRole="member"
+              />
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
@@ -974,10 +866,15 @@ export default function PromptList({ activeTeam, userRole }) {
   const [teamName, setTeamName] = useState("");
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [expandedComments, setExpandedComments] = useState(new Set());
-  const [expandedAITools, setExpandedAITools] = useState(new Set());
+  const [aiToolsModal, setAIToolsModal] = useState({ open: false, prompt: null });
 
   // Pagination
   const pagination = usePagination(filteredPrompts, itemsPerPage);
+
+  // Handler for opening AI tools modal
+  const handleOpenAITools = useCallback((prompt) => {
+    setAIToolsModal({ open: true, prompt });
+  }, []);
 
   // Memoized fetch function for profiles to prevent recreation on every render
   const fetchProfiles = useCallback(async () => {
@@ -1002,14 +899,14 @@ export default function PromptList({ activeTeam, userRole }) {
     );
 
     return result;
-  }, [prompts]); // Only depend on prompts array
+  }, [prompts]);
 
   // FIXED - stable enabled condition
   const { data: cachedProfiles, refresh: refreshProfiles } = useCache(
     `team-profiles-${activeTeam}`,
     fetchProfiles,
     {
-      enabled: true, // Always enabled, let fetchProfiles handle empty prompts
+      enabled: true,
     }
   );
 
@@ -1056,9 +953,6 @@ export default function PromptList({ activeTeam, userRole }) {
 
           // Clear selection when prompts change
           setSelectedPrompts([]);
-
-          // Note: Don't call pagination.resetPagination() here as it causes infinite loop
-          // The pagination will reset automatically when filteredPrompts changes
         } catch (error) {
           handleError(error);
           setLoading(false);
@@ -1072,7 +966,7 @@ export default function PromptList({ activeTeam, userRole }) {
     );
 
     return () => unsub();
-  }, [activeTeam]); // ONLY depend on activeTeam - remove all other dependencies
+  }, [activeTeam]);
 
   // Separate effect to handle profile refreshing
   useEffect(() => {
@@ -1090,7 +984,7 @@ export default function PromptList({ activeTeam, userRole }) {
   // Reset pagination when filtered prompts change
   useEffect(() => {
     pagination.resetPagination();
-  }, [filteredPrompts.length]); // Only reset when the count changes // Don't include profiles or pagination in dependencies
+  }, [filteredPrompts.length]);
 
   // Set initial filtered prompts
   const handleFilteredResults = useCallback((filtered) => {
@@ -1357,18 +1251,6 @@ export default function PromptList({ activeTeam, userRole }) {
     });
   }, []);
 
-  const toggleAITools = useCallback((promptId) => {
-    setExpandedAITools((prev) => {
-      const newExpanded = new Set(prev);
-      if (newExpanded.has(promptId)) {
-        newExpanded.delete(promptId);
-      } else {
-        newExpanded.add(promptId);
-      }
-      return newExpanded;
-    });
-  }, []);
-
   // Selection handlers
   const handlePromptSelection = useCallback((promptId, isSelected) => {
     setSelectedPrompts((prev) => {
@@ -1518,7 +1400,6 @@ export default function PromptList({ activeTeam, userRole }) {
               const isExpanded = expandedPrompts.has(prompt.id);
               const isSelected = selectedPrompts.includes(prompt.id);
               const showComments = expandedComments.has(prompt.id);
-              const showAITools = expandedAITools.has(prompt.id);
 
               return (
                 <CyberPromptCard
@@ -1528,12 +1409,11 @@ export default function PromptList({ activeTeam, userRole }) {
                   isSelected={isSelected}
                   isExpanded={isExpanded}
                   showComments={showComments}
-                  showAITools={showAITools}
                   canModify={canModifyPrompt(prompt)}
                   onSelect={handlePromptSelection}
                   onToggleExpanded={toggleExpanded}
                   onToggleComments={toggleComments}
-                  onToggleAITools={toggleAITools}
+                  onOpenAITools={handleOpenAITools}
                   onCopy={copyToClipboard}
                   onEdit={setEditingPrompt}
                   onDelete={handleDelete}
@@ -1551,6 +1431,22 @@ export default function PromptList({ activeTeam, userRole }) {
             onPageSizeChange={handlePageSizeChange}
           />
         </>
+      )}
+
+      {/* AI Enhancement Tools Modal */}
+      {aiToolsModal.open && (
+        <AIEnhancementTools
+          prompt={aiToolsModal.prompt}
+          onClose={() => setAIToolsModal({ open: false, prompt: null })}
+          onApply={async (updatedPrompt) => {
+            await handleUpdate(updatedPrompt.id, { text: updatedPrompt.text });
+            setAIToolsModal({ open: false, prompt: null });
+          }}
+          onSaveAsNew={async (newPrompt) => {
+            await addPrompt(newPrompt);
+            setAIToolsModal({ open: false, prompt: null });
+          }}
+        />
       )}
     </div>
   );
