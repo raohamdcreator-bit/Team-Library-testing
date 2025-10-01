@@ -2,13 +2,12 @@
 import { useEffect, useState } from "react";
 import { db } from "../lib/firebase";
 import {
-  collection,
+  collectionGroup,
   query,
   where,
-  onSnapshot,
+  getDocs,
   doc,
   updateDoc,
-  getDocs,
   writeBatch,
 } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
@@ -18,32 +17,7 @@ export default function MyInvites() {
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingInvites, setProcessingInvites] = useState(new Set());
-  const [teams, setTeams] = useState([]);
 
-  // First, get user's teams to know which teams to check for invites
-  useEffect(() => {
-    if (!user?.uid) {
-      setTeams([]);
-      return;
-    }
-
-    const teamsQuery = query(
-      collection(db, "teams"),
-      where(`members.${user.uid}`, "!=", null)
-    );
-
-    const unsub = onSnapshot(teamsQuery, (snapshot) => {
-      const userTeams = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setTeams(userTeams);
-    });
-
-    return () => unsub();
-  }, [user?.uid]);
-
-  // Load invites from all teams the user has access to, plus check for email-based invites
   useEffect(() => {
     if (!user?.email) {
       setInvites([]);
@@ -53,65 +27,30 @@ export default function MyInvites() {
 
     async function loadInvites() {
       setLoading(true);
-      const allInvites = [];
-
       try {
-        // Method 1: Check each team the user is a member of for invites to their email
-        for (const team of teams) {
-          try {
-            const invitesQuery = query(
-              collection(db, "teams", team.id, "invites"),
-              where("email", "==", user.email.toLowerCase()),
-              where("status", "==", "pending")
-            );
+        // Use collectionGroup to query all invites across all teams
+        const invitesQuery = query(
+          collectionGroup(db, "invites"),
+          where("email", "==", user.email.toLowerCase()),
+          where("status", "==", "pending")
+        );
 
-            const invitesSnapshot = await getDocs(invitesQuery);
-            invitesSnapshot.docs.forEach((doc) => {
-              allInvites.push({
-                id: doc.id,
-                teamId: team.id,
-                teamName: team.name,
-                ...doc.data(),
-              });
-            });
-          } catch (error) {
-            console.warn(`Could not load invites from team ${team.id}:`, error);
-          }
-        }
+        const snapshot = await getDocs(invitesQuery);
+        
+        const allInvites = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          // Extract teamId from document path: teams/{teamId}/invites/{inviteId}
+          const pathParts = docSnap.ref.path.split('/');
+          const teamId = pathParts[1];
+          
+          return {
+            id: docSnap.id,
+            teamId: teamId,
+            ...data,
+          };
+        });
 
-        // Method 2: Try to get all teams and check for invites (fallback method)
-        if (allInvites.length === 0) {
-          try {
-            const allTeamsSnapshot = await getDocs(collection(db, "teams"));
-
-            for (const teamDoc of allTeamsSnapshot.docs) {
-              try {
-                const invitesQuery = query(
-                  collection(db, "teams", teamDoc.id, "invites"),
-                  where("email", "==", user.email.toLowerCase()),
-                  where("status", "==", "pending")
-                );
-
-                const invitesSnapshot = await getDocs(invitesQuery);
-                invitesSnapshot.docs.forEach((doc) => {
-                  allInvites.push({
-                    id: doc.id,
-                    teamId: teamDoc.id,
-                    teamName: teamDoc.data().name || "Unknown Team",
-                    ...doc.data(),
-                  });
-                });
-              } catch (error) {
-                // Skip teams we don't have access to
-                console.debug(`No access to team ${teamDoc.id} invites`);
-              }
-            }
-          } catch (error) {
-            console.warn("Could not load teams for invite checking:", error);
-          }
-        }
-
-        // Sort newest first
+        // Sort by creation date, newest first
         allInvites.sort((a, b) => {
           const aTime = a.createdAt?.toMillis() || 0;
           const bTime = b.createdAt?.toMillis() || 0;
@@ -120,7 +59,8 @@ export default function MyInvites() {
 
         setInvites(allInvites);
       } catch (error) {
-        console.error("MyInvites: Error loading invites:", error);
+        console.error("Error loading invites:", error);
+        // Don't show error to user - just log it
         setInvites([]);
       } finally {
         setLoading(false);
@@ -128,12 +68,12 @@ export default function MyInvites() {
     }
 
     loadInvites();
-  }, [user?.email, teams]);
+  }, [user?.email]);
 
-  // Accept invite
+  // Accept invite handler
   async function handleAccept(invite) {
     if (!invite?.teamId || !invite?.id) {
-      console.error("MyInvites: Invalid invite data:", invite);
+      console.error("Invalid invite data:", invite);
       return;
     }
 
@@ -160,17 +100,15 @@ export default function MyInvites() {
       await batch.commit();
 
       showNotification(
-        `Successfully joined "${invite.teamName}" as ${
-          invite.role || "member"
-        }!`,
+        `Successfully joined "${invite.teamName}" as ${invite.role || "member"}!`,
         "success"
       );
 
-      // Remove the accepted invite from local state
+      // Remove from local state
       setInvites((prev) => prev.filter((inv) => inv.id !== invite.id));
     } catch (error) {
-      console.error("MyInvites: Error accepting invite:", error);
-
+      console.error("Error accepting invite:", error);
+      
       let errorMessage = "Failed to accept invite. ";
       if (error.code === "permission-denied") {
         errorMessage += "You may not have permission to join this team.";
@@ -190,10 +128,10 @@ export default function MyInvites() {
     }
   }
 
-  // Reject invite
+  // Reject invite handler
   async function handleReject(invite) {
     if (!invite?.teamId || !invite?.id) {
-      console.error("MyInvites: Invalid invite data:", invite);
+      console.error("Invalid invite data:", invite);
       return;
     }
 
@@ -209,17 +147,12 @@ export default function MyInvites() {
       });
 
       showNotification("Invite declined", "info");
-
-      // Remove the rejected invite from local state
       setInvites((prev) => prev.filter((inv) => inv.id !== invite.id));
     } catch (error) {
-      console.error("MyInvites: Error rejecting invite:", error);
-
+      console.error("Error rejecting invite:", error);
+      
       if (error.code !== "not-found") {
-        showNotification(
-          "Failed to decline invite. Please try again.",
-          "error"
-        );
+        showNotification("Failed to decline invite. Please try again.", "error");
       }
     } finally {
       setProcessingInvites((prev) => {
@@ -233,12 +166,7 @@ export default function MyInvites() {
   // Notification helper
   function showNotification(message, type = "info") {
     const notification = document.createElement("div");
-
-    const icons = {
-      success: "✅",
-      error: "❌",
-      info: "ℹ️",
-    };
+    const icons = { success: "✅", error: "❌", info: "ℹ️" };
 
     notification.innerHTML = `
       <div class="flex items-center gap-2">
@@ -247,13 +175,10 @@ export default function MyInvites() {
       </div>
     `;
 
-    notification.className =
-      "fixed top-4 right-4 glass-card px-4 py-3 rounded-lg z-50 text-sm transition-opacity duration-300";
+    notification.className = "fixed top-4 right-4 glass-card px-4 py-3 rounded-lg z-50 text-sm transition-opacity duration-300";
     notification.style.backgroundColor = "var(--card)";
     notification.style.color = "var(--foreground)";
-    notification.style.border = `1px solid var(--${
-      type === "error" ? "destructive" : "primary"
-    })`;
+    notification.style.border = `1px solid var(--${type === "error" ? "destructive" : "primary"})`;
 
     document.body.appendChild(notification);
 
@@ -284,12 +209,9 @@ export default function MyInvites() {
 
   function getRoleIcon(role) {
     switch (role) {
-      case "admin":
-        return "👑";
-      case "owner":
-        return "🔑";
-      default:
-        return "👤";
+      case "admin": return "👑";
+      case "owner": return "🔑";
+      default: return "👤";
     }
   }
 
@@ -304,29 +226,13 @@ export default function MyInvites() {
 
     switch (role) {
       case "owner":
-        return {
-          ...baseStyle,
-          backgroundColor: "var(--accent)",
-          color: "var(--accent-foreground)",
-        };
+        return { ...baseStyle, backgroundColor: "var(--accent)", color: "var(--accent-foreground)" };
       case "admin":
-        return {
-          ...baseStyle,
-          backgroundColor: "var(--primary)",
-          color: "var(--primary-foreground)",
-        };
+        return { ...baseStyle, backgroundColor: "var(--primary)", color: "var(--primary-foreground)" };
       case "member":
-        return {
-          ...baseStyle,
-          backgroundColor: "var(--secondary)",
-          color: "var(--secondary-foreground)",
-        };
+        return { ...baseStyle, backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)" };
       default:
-        return {
-          ...baseStyle,
-          backgroundColor: "var(--muted)",
-          color: "var(--muted-foreground)",
-        };
+        return { ...baseStyle, backgroundColor: "var(--muted)", color: "var(--muted-foreground)" };
     }
   }
 
@@ -336,17 +242,11 @@ export default function MyInvites() {
   }
 
   return (
-    <div
-      className="p-6 border-t"
-      style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
-    >
+    <div className="p-6 border-t" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
       {loading ? (
         <div className="flex items-center gap-3">
           <div className="neo-spinner w-4 h-4"></div>
-          <span
-            className="text-sm"
-            style={{ color: "var(--muted-foreground)" }}
-          >
+          <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>
             Checking for invitations...
           </span>
         </div>
@@ -354,25 +254,15 @@ export default function MyInvites() {
         <>
           {/* Header */}
           <div className="flex items-center gap-3 mb-4">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: "var(--primary)" }}
-            >
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "var(--primary)" }}>
               <span style={{ color: "var(--primary-foreground)" }}>📬</span>
             </div>
             <div>
-              <h3
-                className="font-semibold"
-                style={{ color: "var(--foreground)" }}
-              >
+              <h3 className="font-semibold" style={{ color: "var(--foreground)" }}>
                 Team Invitations
               </h3>
-              <p
-                className="text-sm"
-                style={{ color: "var(--muted-foreground)" }}
-              >
-                {invites.length} pending{" "}
-                {invites.length === 1 ? "invitation" : "invitations"}
+              <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                {invites.length} pending {invites.length === 1 ? "invitation" : "invitations"}
               </p>
             </div>
           </div>
@@ -383,18 +273,12 @@ export default function MyInvites() {
               const isProcessing = processingInvites.has(invite.id);
 
               return (
-                <div
-                  key={invite.id}
-                  className="glass-card p-4 transition-all duration-200"
-                >
+                <div key={invite.id} className="glass-card p-4 transition-all duration-200">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       {/* Team Info */}
                       <div className="flex items-center gap-2 mb-2">
-                        <h4
-                          className="font-semibold truncate"
-                          style={{ color: "var(--foreground)" }}
-                        >
+                        <h4 className="font-semibold truncate" style={{ color: "var(--foreground)" }}>
                           {invite.teamName}
                         </h4>
                         <span style={getRoleBadge(invite.role)}>
@@ -403,39 +287,19 @@ export default function MyInvites() {
                       </div>
 
                       {/* Invite Details */}
-                      <div
-                        className="text-sm space-y-1"
-                        style={{ color: "var(--muted-foreground)" }}
-                      >
+                      <div className="text-sm space-y-1" style={{ color: "var(--muted-foreground)" }}>
                         {invite.inviterName && (
-                          <p>
-                            <span className="font-medium">Invited by:</span>{" "}
-                            {invite.inviterName}
-                          </p>
+                          <p><span className="font-medium">Invited by:</span> {invite.inviterName}</p>
                         )}
-                        <p>
-                          <span className="font-medium">Received:</span>{" "}
-                          {formatDate(invite.createdAt)}
-                        </p>
+                        <p><span className="font-medium">Received:</span> {formatDate(invite.createdAt)}</p>
                       </div>
 
                       {/* Role Description */}
-                      <div
-                        className="mt-2 p-2 rounded border text-xs"
-                        style={{
-                          backgroundColor: "var(--muted)",
-                          borderColor: "var(--border)",
-                          color: "var(--muted-foreground)",
-                        }}
-                      >
-                        <span className="font-medium">
-                          As a {invite.role || "member"}, you'll be able to:{" "}
-                        </span>
-                        {invite.role === "admin"
-                          ? "manage team members and all prompts"
-                          : invite.role === "owner"
-                          ? "have full control over the team"
-                          : "create and manage your own prompts"}
+                      <div className="mt-2 p-2 rounded border text-xs" style={{ backgroundColor: "var(--muted)", borderColor: "var(--border)", color: "var(--muted-foreground)" }}>
+                        <span className="font-medium">As a {invite.role || "member"}, you'll be able to: </span>
+                        {invite.role === "admin" ? "manage team members and all prompts" : 
+                         invite.role === "owner" ? "have full control over the team" : 
+                         "create and manage your own prompts"}
                       </div>
                     </div>
 
@@ -451,9 +315,7 @@ export default function MyInvites() {
                           opacity: isProcessing ? 0.5 : 1,
                         }}
                       >
-                        {isProcessing && (
-                          <div className="neo-spinner w-3 h-3"></div>
-                        )}
+                        {isProcessing && <div className="neo-spinner w-3 h-3"></div>}
                         Accept
                       </button>
 
@@ -478,18 +340,11 @@ export default function MyInvites() {
           </div>
 
           {/* Footer Note */}
-          <div
-            className="mt-4 p-3 rounded-lg text-xs flex items-start gap-2"
-            style={{
-              backgroundColor: "var(--muted)",
-              color: "var(--muted-foreground)",
-            }}
-          >
+          <div className="mt-4 p-3 rounded-lg text-xs flex items-start gap-2" style={{ backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}>
             <span>💡</span>
             <p>
-              Accepting an invitation will give you immediate access to the
-              team's prompt library. You can leave teams at any time from the
-              team settings.
+              Accepting an invitation will give you immediate access to the team's prompt library. 
+              You can leave teams at any time from the team settings.
             </p>
           </div>
         </>
