@@ -1,4 +1,4 @@
-// src/components/AIPromptEnhancer.jsx - Client-side AI Enhancement Component
+// src/components/AIPromptEnhancer.jsx - Client-side AI Enhancement Component now
 import { useState } from 'react';
 
 export default function AIPromptEnhancer({ prompt, onApply, onSaveAsNew, onClose }) {
