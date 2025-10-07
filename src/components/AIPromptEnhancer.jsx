@@ -6,7 +6,9 @@ export default function AIPromptEnhancer({ prompt, onApply, onSaveAsNew, onClose
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-
+// Add this temporarily to your AIPromptEnhancer.jsx in handleEnhance function
+console.log('🔍 Attempting to call:', '/api/enhance-prompt');
+console.log('🔍 Request body:', { prompt: prompt.text, enhancementType });
   const enhancementTypes = [
     {
       id: 'general',
