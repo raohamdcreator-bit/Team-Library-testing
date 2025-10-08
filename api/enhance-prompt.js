@@ -13,7 +13,8 @@ const PROVIDER_CONFIGS = {
   [PROVIDERS.GROQ]: {
     endpoint: 'https://api.groq.com/openai/v1/chat/completions',
     apiKey: process.env.GROQ_API_KEY,
-    model: 'mixtral-8x7b-32768',
+    model: 'llama-3.3-70b-versatile', // UPDATED: Current active model
+    // Alternative models: 'llama-3.1-70b-versatile', 'mixtral-8x7b-32768' (deprecated)
   },
   [PROVIDERS.HUGGINGFACE]: {
     endpoint: 'https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1',
