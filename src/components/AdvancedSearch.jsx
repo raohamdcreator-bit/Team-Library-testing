@@ -1,4 +1,4 @@
-// src/components/AdvancedSearch.jsx
+// src/components/AdvancedSearch.jsx - Updated to match PromptList UI style
 import { useState, useEffect } from "react";
 
 export default function AdvancedSearch({
@@ -193,7 +193,15 @@ export default function AdvancedSearch({
   }).length;
 
   return (
-    <div className="bg-white border rounded-lg p-4 mb-6 shadow-sm">
+    <div className="glass-card p-6">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <span className="text-2xl">🔍</span>
+        <h3 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>
+          Search & Filter
+        </h3>
+      </div>
+
       {/* Basic Search */}
       <div className="flex items-center gap-3 mb-4">
         <div className="flex-1 relative">
@@ -211,30 +219,37 @@ export default function AdvancedSearch({
           onChange={(e) => handleFilterChange("sortBy", e.target.value)}
           className="form-input"
         >
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
-          <option value="title">Title A-Z</option>
-          <option value="author">Author A-Z</option>
-          <option value="length-desc">Longest First</option>
-          <option value="length-asc">Shortest First</option>
+          <option value="newest">⏰ Newest First</option>
+          <option value="oldest">📅 Oldest First</option>
+          <option value="title">🔤 Title A-Z</option>
+          <option value="author">👤 Author A-Z</option>
+          <option value="length-desc">📏 Longest First</option>
+          <option value="length-asc">📐 Shortest First</option>
         </select>
 
         <button
           onClick={toggleAdvanced}
-          className={`flex items-center gap-2 px-3 py-2 rounded border transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-300 hover:scale-105 active:scale-95 ${
             showAdvanced
-              ? "bg-blue-50 border-blue-300 text-blue-700"
-              : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+              ? "btn-primary"
+              : "btn-secondary"
           }`}
         >
-          Filters
+          <span>⚙️</span>
+          <span className="font-medium">Filters</span>
           {activeFilterCount > 0 && (
-            <span className="bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">
+            <span 
+              className="text-xs rounded-full px-2 py-0.5 min-w-[1.25rem] text-center font-bold"
+              style={{
+                backgroundColor: "var(--primary)",
+                color: "var(--primary-foreground)",
+              }}
+            >
               {activeFilterCount}
             </span>
           )}
           <span
-            className={`transition-transform ${
+            className={`transition-transform duration-300 ${
               showAdvanced ? "rotate-180" : ""
             }`}
           >
@@ -245,12 +260,21 @@ export default function AdvancedSearch({
 
       {/* Advanced Filters */}
       {showAdvanced && (
-        <div className="border-t pt-4 space-y-4">
+        <div 
+          className="border-t pt-6 space-y-6" 
+          style={{ 
+            borderColor: "var(--border)",
+            animation: "fadeIn 0.3s ease-out",
+          }}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Author Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Author
+              <label 
+                className="block text-sm font-medium mb-2"
+                style={{ color: "var(--foreground)" }}
+              >
+                👤 Author
               </label>
               <select
                 value={filters.author}
@@ -268,8 +292,11 @@ export default function AdvancedSearch({
 
             {/* Date Range */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Created
+              <label 
+                className="block text-sm font-medium mb-2"
+                style={{ color: "var(--foreground)" }}
+              >
+                📅 Created
               </label>
               <select
                 value={filters.dateRange}
@@ -288,8 +315,11 @@ export default function AdvancedSearch({
 
             {/* Tags */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tags
+              <label 
+                className="block text-sm font-medium mb-2"
+                style={{ color: "var(--foreground)" }}
+              >
+                🏷️ Tags
               </label>
               <input
                 type="text"
@@ -298,13 +328,21 @@ export default function AdvancedSearch({
                 onChange={(e) => handleFilterChange("tags", e.target.value)}
                 className="form-input w-full"
               />
-              <p className="text-xs text-gray-500 mt-1">Comma separated</p>
+              <p 
+                className="text-xs mt-1"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                Comma separated
+              </p>
             </div>
 
             {/* Length Range */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Min Characters
+              <label 
+                className="block text-sm font-medium mb-2"
+                style={{ color: "var(--foreground)" }}
+              >
+                📏 Min Characters
               </label>
               <input
                 type="number"
@@ -319,8 +357,11 @@ export default function AdvancedSearch({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Max Characters
+              <label 
+                className="block text-sm font-medium mb-2"
+                style={{ color: "var(--foreground)" }}
+              >
+                📐 Max Characters
               </label>
               <input
                 type="number"
@@ -333,21 +374,101 @@ export default function AdvancedSearch({
                 min="0"
               />
             </div>
+
+            {/* Results Count */}
+            <div className="flex items-center">
+              <div 
+                className="p-4 rounded-lg border w-full flex items-center justify-center gap-2"
+                style={{
+                  backgroundColor: "var(--secondary)",
+                  borderColor: "var(--border)",
+                }}
+              >
+                <span className="text-2xl">📊</span>
+                <div>
+                  <p 
+                    className="text-xs"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
+                    Results
+                  </p>
+                  <p 
+                    className="text-xl font-bold"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    {applyFilters(prompts).length}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Clear Filters */}
           {hasActiveFilters() && (
-            <div className="flex justify-end pt-2 border-t">
+            <div 
+              className="flex justify-between items-center pt-4 border-t"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <p 
+                className="text-sm"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                {activeFilterCount} active {activeFilterCount === 1 ? "filter" : "filters"}
+              </p>
               <button
                 onClick={clearFilters}
-                className="text-gray-600 hover:text-gray-800 text-sm px-3 py-1 rounded transition-colors"
+                className="btn-secondary text-sm px-4 py-2 hover:scale-105 active:scale-95 transition-all duration-200"
               >
-                Clear All Filters
+                🗑️ Clear All Filters
               </button>
             </div>
           )}
         </div>
       )}
+
+      {/* Search Tips */}
+      {filters.search === "" && !showAdvanced && (
+        <div 
+          className="mt-4 p-3 rounded-lg border"
+          style={{
+            backgroundColor: "var(--muted)",
+            borderColor: "var(--border)",
+          }}
+        >
+          <div className="flex items-start gap-2">
+            <span className="text-lg">💡</span>
+            <div>
+              <p 
+                className="text-xs font-medium mb-1"
+                style={{ color: "var(--foreground)" }}
+              >
+                Search Tips
+              </p>
+              <p 
+                className="text-xs"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                Search by title, content, or tags. Use advanced filters for precise results.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+// Add keyframe animations
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  `;
+  if (!document.querySelector('style[data-advanced-search-styles]')) {
+    style.setAttribute('data-advanced-search-styles', 'true');
+    document.head.appendChild(style);
+  }
 }
