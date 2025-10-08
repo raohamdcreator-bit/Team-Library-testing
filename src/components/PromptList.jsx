@@ -23,7 +23,7 @@ import AdvancedSearch from "./AdvancedSearch";
 import BulkOperations, { PromptSelector } from "./BulkOperations";
 import ExportImport, { ExportUtils } from "./ExportImport";
 import usePagination, { PaginationControls } from "../hooks/usePagination";
-import AIPromptEnhancer from "./AIPromptEnhancer"; // ✅ NEW: AI Enhancement Component
+import AIPromptEnhancer from "./AIPromptEnhancer";
 
 export default function PromptList({ activeTeam, userRole }) {
   const { user } = useAuth();
@@ -38,8 +38,9 @@ export default function PromptList({ activeTeam, userRole }) {
   const [selectedPrompts, setSelectedPrompts] = useState([]);
   const [teamMembers, setTeamMembers] = useState({});
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [teamName, setTeamName] = useState(""); // ✅ NEW: Store team name
   
-  // ✅ NEW: AI Enhancement State
+  // AI Enhancement State
   const [showAIEnhancer, setShowAIEnhancer] = useState(false);
   const [currentPromptForAI, setCurrentPromptForAI] = useState(null);
 
@@ -79,6 +80,28 @@ export default function PromptList({ activeTeam, userRole }) {
     );
 
     return () => unsub();
+  }, [activeTeam]);
+
+  // ✅ NEW: Load team name
+  useEffect(() => {
+    async function loadTeamName() {
+      if (!activeTeam) {
+        setTeamName("");
+        return;
+      }
+
+      try {
+        const teamDoc = await getDoc(doc(db, "teams", activeTeam));
+        if (teamDoc.exists()) {
+          setTeamName(teamDoc.data().name || "Unknown Team");
+        }
+      } catch (error) {
+        console.error("Error loading team name:", error);
+        setTeamName("Unknown Team");
+      }
+    }
+
+    loadTeamName();
   }, [activeTeam]);
 
   // Load team member profiles for avatars
@@ -143,10 +166,10 @@ export default function PromptList({ activeTeam, userRole }) {
 
       setNewPrompt({ title: "", tags: "", text: "" });
       setShowCreateForm(false);
-      showNotification("✅ Prompt created successfully!", "success");
+      showNotification("Prompt created successfully!", "success");
     } catch (error) {
       console.error("Error creating prompt:", error);
-      showNotification("❌ Failed to create prompt", "error");
+      showNotification("Failed to create prompt", "error");
     }
   }
 
@@ -156,10 +179,10 @@ export default function PromptList({ activeTeam, userRole }) {
       await updatePrompt(activeTeam, promptId, updates);
       setShowEditModal(false);
       setEditingPrompt(null);
-      showNotification("✅ Prompt updated successfully!", "success");
+      showNotification("Prompt updated successfully!", "success");
     } catch (error) {
       console.error("Error updating prompt:", error);
-      showNotification("❌ Failed to update prompt", "error");
+      showNotification("Failed to update prompt", "error");
     }
   }
 
@@ -182,10 +205,10 @@ export default function PromptList({ activeTeam, userRole }) {
 
     try {
       await deletePrompt(activeTeam, promptId);
-      showNotification("🗑️ Prompt deleted", "success");
+      showNotification("Prompt deleted", "success");
     } catch (error) {
       console.error("Error deleting prompt:", error);
-      showNotification("❌ Failed to delete prompt", "error");
+      showNotification("Failed to delete prompt", "error");
     }
   }
 
@@ -193,10 +216,10 @@ export default function PromptList({ activeTeam, userRole }) {
   async function handleCopy(text) {
     try {
       await navigator.clipboard.writeText(text);
-      showNotification("📋 Copied to clipboard!", "success");
+      showNotification("Copied to clipboard!", "success");
     } catch (error) {
       console.error("Error copying to clipboard:", error);
-      showNotification("❌ Failed to copy", "error");
+      showNotification("Failed to copy", "error");
     }
   }
 
@@ -222,12 +245,12 @@ export default function PromptList({ activeTeam, userRole }) {
       );
       setSelectedPrompts([]);
       showNotification(
-        `🗑️ Deleted ${promptIds.length} prompts`,
+        `Deleted ${promptIds.length} prompts`,
         "success"
       );
     } catch (error) {
       console.error("Bulk delete error:", error);
-      showNotification("❌ Some prompts failed to delete", "error");
+      showNotification("Some prompts failed to delete", "error");
     }
   }
 
@@ -244,7 +267,7 @@ export default function PromptList({ activeTeam, userRole }) {
         ExportUtils.exportAsTXT(promptsToExport, filename);
         break;
     }
-    showNotification(`📥 Exported ${promptsToExport.length} prompts`, "success");
+    showNotification(`Exported ${promptsToExport.length} prompts`, "success");
   }
 
   // Import prompts
@@ -264,19 +287,19 @@ export default function PromptList({ activeTeam, userRole }) {
 
     if (successCount > 0) {
       showNotification(
-        `✅ Imported ${successCount} prompts${failCount > 0 ? `, ${failCount} failed` : ""}`,
+        `Imported ${successCount} prompts${failCount > 0 ? `, ${failCount} failed` : ""}`,
         successCount > failCount ? "success" : "error"
       );
     }
   }
 
-  // ✅ NEW: Handle AI Enhancement
+  // Handle AI Enhancement
   function handleAIEnhance(prompt) {
     setCurrentPromptForAI(prompt);
     setShowAIEnhancer(true);
   }
 
-  // ✅ NEW: Apply AI Enhanced Prompt
+  // Apply AI Enhanced Prompt
   async function handleApplyAIEnhancement(enhancedPrompt) {
     try {
       await updatePrompt(activeTeam, enhancedPrompt.id, {
@@ -285,14 +308,14 @@ export default function PromptList({ activeTeam, userRole }) {
       });
       setShowAIEnhancer(false);
       setCurrentPromptForAI(null);
-      showNotification("✨ AI enhancement applied!", "success");
+      showNotification("AI enhancement applied!", "success");
     } catch (error) {
       console.error("Error applying enhancement:", error);
-      showNotification("❌ Failed to apply enhancement", "error");
+      showNotification("Failed to apply enhancement", "error");
     }
   }
 
-  // ✅ NEW: Save AI Enhanced as New Prompt
+  // Save AI Enhanced as New Prompt
   async function handleSaveAIAsNew(enhancedPrompt) {
     try {
       await savePrompt(
@@ -306,17 +329,28 @@ export default function PromptList({ activeTeam, userRole }) {
       );
       setShowAIEnhancer(false);
       setCurrentPromptForAI(null);
-      showNotification("✨ AI enhanced prompt saved as new!", "success");
+      showNotification("AI enhanced prompt saved as new!", "success");
     } catch (error) {
       console.error("Error saving enhanced prompt:", error);
-      showNotification("❌ Failed to save enhanced prompt", "error");
+      showNotification("Failed to save enhanced prompt", "error");
     }
   }
 
   // Notification helper
   function showNotification(message, type = "info") {
+    const icons = {
+      success: "✓",
+      error: "✕",
+      info: "ℹ"
+    };
+    
     const notification = document.createElement("div");
-    notification.innerHTML = `<div>${message}</div>`;
+    notification.innerHTML = `
+      <div class="flex items-center gap-2">
+        <span>${icons[type] || icons.info}</span>
+        <span>${message}</span>
+      </div>
+    `;
     notification.className =
       "fixed top-4 right-4 glass-card px-4 py-3 rounded-lg z-50 text-sm transition-opacity duration-300";
     notification.style.cssText = `
@@ -400,6 +434,22 @@ export default function PromptList({ activeTeam, userRole }) {
     );
   }
 
+  // Icon components for better consistency
+  const Icon = ({ name, className = "" }) => {
+    const icons = {
+      add: <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>,
+      close: <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+      sparkles: <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>,
+      copy: <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>,
+      edit: <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+      trash: <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
+      chevronUp: <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>,
+      chevronDown: <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>,
+      document: <svg className={`w-6 h-6 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+    };
+    return icons[name] || null;
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -432,7 +482,7 @@ export default function PromptList({ activeTeam, userRole }) {
             onClick={() => setShowCreateForm(!showCreateForm)}
             className="btn-primary px-6 py-3 flex items-center gap-2"
           >
-            <span className="text-xl">{showCreateForm ? "✕" : "+"}</span>
+            <Icon name={showCreateForm ? "close" : "add"} />
             <span>{showCreateForm ? "Cancel" : "New Prompt"}</span>
           </button>
         </div>
@@ -557,7 +607,7 @@ export default function PromptList({ activeTeam, userRole }) {
       {/* Prompts List */}
       {pagination.currentItems.length === 0 ? (
         <div className="glass-card p-12 text-center">
-          <div className="text-6xl mb-4">📝</div>
+          <Icon name="document" className="mx-auto mb-4 w-16 h-16 text-gray-400" />
           <h3
             className="text-lg font-semibold mb-2"
             style={{ color: "var(--foreground)" }}
@@ -632,13 +682,15 @@ export default function PromptList({ activeTeam, userRole }) {
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2 ml-4">
-                     <FavoriteButton
+                    {/* ✅ UPDATED: Pass teamName properly */}
+                    <FavoriteButton
                       prompt={prompt}
                       teamId={activeTeam}
-                      teamName={prompt.teamName}
+                      teamName={teamName}
                       size="small"
                     />
-                    {/* ✅ NEW: AI Enhance Button */}
+                    
+                    {/* AI Enhance Button */}
                     <button
                       onClick={() => handleAIEnhance(prompt)}
                       className="p-2 rounded-lg transition-all duration-200 hover:scale-110"
@@ -648,7 +700,7 @@ export default function PromptList({ activeTeam, userRole }) {
                       }}
                       title="Enhance with AI"
                     >
-                      <span className="text-lg">✨</span>
+                      <Icon name="sparkles" />
                     </button>
 
                     <button
@@ -660,7 +712,7 @@ export default function PromptList({ activeTeam, userRole }) {
                       }}
                       title="Copy to clipboard"
                     >
-                      📋
+                      <Icon name="copy" />
                     </button>
 
                     {canEditPrompt(prompt) && (
@@ -677,7 +729,7 @@ export default function PromptList({ activeTeam, userRole }) {
                           }}
                           title="Edit prompt"
                         >
-                          ✏️
+                          <Icon name="edit" />
                         </button>
 
                         <button
@@ -689,7 +741,7 @@ export default function PromptList({ activeTeam, userRole }) {
                           }}
                           title="Delete prompt"
                         >
-                          🗑️
+                          <Icon name="trash" />
                         </button>
                       </>
                     )}
@@ -705,7 +757,7 @@ export default function PromptList({ activeTeam, userRole }) {
                       }}
                       title={isExpanded ? "Collapse" : "Expand"}
                     >
-                      {isExpanded ? "▲" : "▼"}
+                      <Icon name={isExpanded ? "chevronUp" : "chevronDown"} />
                     </button>
                   </div>
                 </div>
@@ -751,7 +803,7 @@ export default function PromptList({ activeTeam, userRole }) {
 
                 {/* Expanded Content */}
                 {isExpanded && (
-                  <div className="space-y-4 border-t pt-4" style={{  borderColor: "var(--border)" }}>
+                  <div className="space-y-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
                     {/* AI Model Analysis */}
                     <CompactAITools text={prompt.text} />
 
@@ -792,7 +844,7 @@ export default function PromptList({ activeTeam, userRole }) {
       <ExportImport
         onImport={handleImport}
         teamId={activeTeam}
-        teamName="Current Team"
+        teamName={teamName}
         userRole={userRole}
       />
 
@@ -809,7 +861,7 @@ export default function PromptList({ activeTeam, userRole }) {
         />
       )}
 
-      {/* ✅ NEW: AI Enhancement Modal */}
+      {/* AI Enhancement Modal */}
       {showAIEnhancer && currentPromptForAI && (
         <AIPromptEnhancer
           prompt={currentPromptForAI}
