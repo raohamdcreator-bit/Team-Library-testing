@@ -434,66 +434,20 @@ export default function PromptList({ activeTeam, userRole }) {
     );
   }
 
-  // Icon components for better consistency
-  function Icon({ name, className = "" }) {
-    switch(name) {
-      case 'add':
-        return (
-          <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-        );
-      case 'close':
-        return (
-          <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        );
-      case 'sparkles':
-        return (
-          <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-          </svg>
-        );
-      case 'copy':
-        return (
-          <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-        );
-      case 'edit':
-        return (
-          <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-        );
-      case 'trash':
-        return (
-          <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        );
-      case 'chevronUp':
-        return (
-          <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-          </svg>
-        );
-      case 'chevronDown':
-        return (
-          <svg className={`w-5 h-5 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        );
-      case 'document':
-        return (
-          <svg className={`w-6 h-6 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        );
-      default:
-        return null;
-    }
+  // Simple text-based icons that will definitely work
+  function getIconText(name) {
+    const icons = {
+      add: '+',
+      close: '×',
+      sparkles: '✨',
+      copy: '⎘',
+      edit: '✎',
+      trash: '🗑',
+      chevronUp: '▲',
+      chevronDown: '▼',
+      document: '📄',
+    };
+    return icons[name] || '';
   }
 
   // Loading state
@@ -528,7 +482,7 @@ export default function PromptList({ activeTeam, userRole }) {
             onClick={() => setShowCreateForm(!showCreateForm)}
             className="btn-primary px-6 py-3 flex items-center gap-2"
           >
-            <Icon name={showCreateForm ? "close" : "add"} />
+            <span className="text-xl">{getIconText(showCreateForm ? "close" : "add")}</span>
             <span>{showCreateForm ? "Cancel" : "New Prompt"}</span>
           </button>
         </div>
@@ -653,7 +607,7 @@ export default function PromptList({ activeTeam, userRole }) {
       {/* Prompts List */}
       {pagination.currentItems.length === 0 ? (
         <div className="glass-card p-12 text-center">
-          <Icon name="document" className="mx-auto mb-4 w-16 h-16 text-gray-400" />
+          <div className="text-6xl mb-4">{getIconText("document")}</div>
           <h3
             className="text-lg font-semibold mb-2"
             style={{ color: "var(--foreground)" }}
@@ -746,7 +700,7 @@ export default function PromptList({ activeTeam, userRole }) {
                       }}
                       title="Enhance with AI"
                     >
-                      <Icon name="sparkles" />
+                      <span className="text-lg">{getIconText("sparkles")}</span>
                     </button>
 
                     <button
@@ -758,7 +712,7 @@ export default function PromptList({ activeTeam, userRole }) {
                       }}
                       title="Copy to clipboard"
                     >
-                      <Icon name="copy" />
+                      <span className="text-lg">{getIconText("copy")}</span>
                     </button>
 
                     {canEditPrompt(prompt) && (
@@ -775,7 +729,7 @@ export default function PromptList({ activeTeam, userRole }) {
                           }}
                           title="Edit prompt"
                         >
-                          <Icon name="edit" />
+                          <span className="text-lg">{getIconText("edit")}</span>
                         </button>
 
                         <button
@@ -787,7 +741,7 @@ export default function PromptList({ activeTeam, userRole }) {
                           }}
                           title="Delete prompt"
                         >
-                          <Icon name="trash" />
+                          <span className="text-lg">{getIconText("trash")}</span>
                         </button>
                       </>
                     )}
@@ -803,7 +757,7 @@ export default function PromptList({ activeTeam, userRole }) {
                       }}
                       title={isExpanded ? "Collapse" : "Expand"}
                     >
-                      <Icon name={isExpanded ? "chevronUp" : "chevronDown"} />
+                      <span className="text-lg">{getIconText(isExpanded ? "chevronUp" : "chevronDown")}</span>
                     </button>
                   </div>
                 </div>
