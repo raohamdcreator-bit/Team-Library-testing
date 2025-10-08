@@ -1,6 +1,4 @@
-// api/enhance-prompt.js - Vercel Serverless Function for AI Prompt Enhancement
-// Supports multiple AI providers: Groq, Hugging Face, OpenRouter
-
+// api/enhance-prompt.js - Enhanced with detailed error logging
 const PROVIDERS = {
   GROQ: 'groq',
   HUGGINGFACE: 'huggingface',
@@ -15,8 +13,7 @@ const PROVIDER_CONFIGS = {
   [PROVIDERS.GROQ]: {
     endpoint: 'https://api.groq.com/openai/v1/chat/completions',
     apiKey: process.env.GROQ_API_KEY,
-    model: 'mixtral-8x7b-32768', // Free tier: Fast and powerful
-    // Alternative models: 'llama3-70b-8192', 'llama3-8b-8192'
+    model: 'mixtral-8x7b-32768',
   },
   [PROVIDERS.HUGGINGFACE]: {
     endpoint: 'https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1',
@@ -26,8 +23,7 @@ const PROVIDER_CONFIGS = {
   [PROVIDERS.OPENROUTER]: {
     endpoint: 'https://openrouter.ai/api/v1/chat/completions',
     apiKey: process.env.OPENROUTER_API_KEY,
-    model: 'meta-llama/llama-3.1-8b-instruct:free', // Free model
-    // Paid alternatives: 'anthropic/claude-3-sonnet', 'openai/gpt-4-turbo'
+    model: 'meta-llama/llama-3.1-8b-instruct:free',
   }
 };
 
@@ -46,44 +42,91 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Detailed logging for debugging
+  console.log('=== AI Enhancement Request ===');
+  console.log('Active Provider:', ACTIVE_PROVIDER);
+  console.log('Environment Variables Check:');
+  console.log('- AI_PROVIDER:', process.env.AI_PROVIDER ? '✓ Set' : '✗ Not set');
+  console.log('- GROQ_API_KEY:', process.env.GROQ_API_KEY ? `✓ Set (${process.env.GROQ_API_KEY.substring(0, 10)}...)` : '✗ Not set');
+  console.log('- HUGGINGFACE_API_KEY:', process.env.HUGGINGFACE_API_KEY ? '✓ Set' : '✗ Not set');
+  console.log('- OPENROUTER_API_KEY:', process.env.OPENROUTER_API_KEY ? '✓ Set' : '✗ Not set');
+
   try {
     const { prompt, enhancementType = 'general', context = {} } = req.body;
 
+    // Validate prompt
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+      console.error('Invalid prompt:', prompt);
       return res.status(400).json({ 
+        success: false,
         error: 'Invalid prompt',
         message: 'Prompt text is required and must be a non-empty string'
       });
     }
 
+    console.log('Prompt length:', prompt.length);
+    console.log('Enhancement type:', enhancementType);
+
     // Validate provider configuration
     const config = PROVIDER_CONFIGS[ACTIVE_PROVIDER];
-    if (!config || !config.apiKey) {
-      console.error(`Missing API key for provider: ${ACTIVE_PROVIDER}`);
+    
+    if (!config) {
+      console.error('Provider configuration not found for:', ACTIVE_PROVIDER);
       return res.status(500).json({ 
+        success: false,
         error: 'Service configuration error',
-        message: 'AI enhancement service is not properly configured'
+        message: `Provider "${ACTIVE_PROVIDER}" is not supported. Available: ${Object.keys(PROVIDERS).join(', ')}`
       });
     }
 
-    console.log(`🤖 Using provider: ${ACTIVE_PROVIDER}`);
-    console.log(`📝 Enhancing prompt: "${prompt.substring(0, 50)}..."`);
+    if (!config.apiKey) {
+      console.error(`Missing API key for provider: ${ACTIVE_PROVIDER}`);
+      console.error('Config check:', {
+        provider: ACTIVE_PROVIDER,
+        hasEndpoint: !!config.endpoint,
+        hasModel: !!config.model,
+        hasApiKey: !!config.apiKey
+      });
+      
+      return res.status(500).json({ 
+        success: false,
+        error: 'Service configuration error',
+        message: `API key not configured for ${ACTIVE_PROVIDER}. Please add ${ACTIVE_PROVIDER.toUpperCase()}_API_KEY to environment variables.`,
+        details: process.env.NODE_ENV === 'development' ? {
+          provider: ACTIVE_PROVIDER,
+          requiredEnvVar: `${ACTIVE_PROVIDER.toUpperCase()}_API_KEY`,
+          availableEnvVars: Object.keys(process.env).filter(k => k.includes('API'))
+        } : undefined
+      });
+    }
+
+    console.log(`✓ Using provider: ${ACTIVE_PROVIDER}`);
+    console.log(`✓ Model: ${config.model}`);
+    console.log(`✓ Endpoint: ${config.endpoint}`);
 
     // Generate enhancement prompt based on type
     const systemPrompt = generateSystemPrompt(enhancementType, context);
     const userPrompt = generateUserPrompt(prompt, enhancementType);
 
+    console.log('System prompt length:', systemPrompt.length);
+    console.log('User prompt length:', userPrompt.length);
+
     // Call the selected AI provider
+    console.log('Calling AI provider...');
     const enhancedPrompt = await callAIProvider(
       config,
       systemPrompt,
       userPrompt
     );
 
+    console.log('AI response received, length:', enhancedPrompt?.length || 0);
+
     // Extract and validate the enhanced prompt
     const result = extractEnhancedPrompt(enhancedPrompt);
 
-    console.log(`✅ Enhancement successful (${result.enhanced.length} chars)`);
+    console.log('✓ Enhancement successful');
+    console.log('- Enhanced length:', result.enhanced.length);
+    console.log('- Improvements count:', result.improvements.length);
 
     return res.status(200).json({
       success: true,
@@ -102,14 +145,24 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('❌ Enhancement error:', error);
+    console.error('=== Enhancement Error ===');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    // Detailed error information
+    if (error.cause) {
+      console.error('Error cause:', error.cause);
+    }
 
     // Provide helpful error messages
     let errorMessage = 'Failed to enhance prompt';
     let statusCode = 500;
+    let errorDetails = error.message;
 
-    if (error.message?.includes('API key')) {
+    if (error.message?.includes('API key') || error.message?.includes('authentication')) {
       errorMessage = 'AI service authentication failed';
+      errorDetails = 'Invalid or missing API key';
       statusCode = 503;
     } else if (error.message?.includes('rate limit')) {
       errorMessage = 'Rate limit exceeded. Please try again later.';
@@ -117,16 +170,26 @@ export default async function handler(req, res) {
     } else if (error.message?.includes('timeout')) {
       errorMessage = 'Request timeout. Please try again.';
       statusCode = 504;
-    } else if (error.message?.includes('network')) {
+    } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
       errorMessage = 'Network error connecting to AI service';
+      errorDetails = 'Could not reach AI provider endpoint';
       statusCode = 503;
+    } else if (error.message?.includes('400')) {
+      errorMessage = 'Invalid request to AI service';
+      errorDetails = 'The prompt may be too long or contain invalid characters';
+      statusCode = 400;
     }
 
     return res.status(statusCode).json({
       success: false,
       error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-      provider: ACTIVE_PROVIDER
+      details: errorDetails,
+      provider: ACTIVE_PROVIDER,
+      debugInfo: process.env.NODE_ENV === 'development' ? {
+        errorName: error.name,
+        errorMessage: error.message,
+        stack: error.stack?.split('\n').slice(0, 3)
+      } : undefined
     });
   }
 }
@@ -222,6 +285,8 @@ async function callAIProvider(config, systemPrompt, userPrompt) {
       'Content-Type': 'application/json',
     };
 
+    console.log('Preparing request for provider:', ACTIVE_PROVIDER);
+
     // Provider-specific request formatting
     switch (ACTIVE_PROVIDER) {
       case PROVIDERS.GROQ:
@@ -236,6 +301,7 @@ async function callAIProvider(config, systemPrompt, userPrompt) {
           max_tokens: 2000,
           top_p: 0.9
         };
+        console.log('Groq request prepared');
         break;
 
       case PROVIDERS.HUGGINGFACE:
@@ -249,6 +315,7 @@ async function callAIProvider(config, systemPrompt, userPrompt) {
             return_full_text: false
           }
         };
+        console.log('HuggingFace request prepared');
         break;
 
       case PROVIDERS.OPENROUTER:
@@ -264,13 +331,15 @@ async function callAIProvider(config, systemPrompt, userPrompt) {
           temperature: 0.7,
           max_tokens: 2000
         };
+        console.log('OpenRouter request prepared');
         break;
 
       default:
         throw new Error(`Unsupported provider: ${ACTIVE_PROVIDER}`);
     }
 
-    console.log(`📡 Calling ${ACTIVE_PROVIDER} API...`);
+    console.log('Making fetch request to:', config.endpoint);
+    console.log('Request body size:', JSON.stringify(requestBody).length, 'bytes');
 
     const response = await fetch(config.endpoint, {
       method: 'POST',
@@ -281,13 +350,25 @@ async function callAIProvider(config, systemPrompt, userPrompt) {
 
     clearTimeout(timeoutId);
 
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error(`API Error (${response.status}):`, errorData);
-      throw new Error(`AI API returned ${response.status}: ${errorData}`);
+      const errorText = await response.text();
+      console.error(`API Error Response (${response.status}):`, errorText);
+      
+      // Try to parse as JSON for better error message
+      try {
+        const errorJson = JSON.parse(errorText);
+        console.error('Parsed error:', errorJson);
+        throw new Error(`AI API error: ${errorJson.error?.message || errorJson.message || errorText}`);
+      } catch (e) {
+        throw new Error(`AI API returned ${response.status}: ${errorText.substring(0, 200)}`);
+      }
     }
 
     const data = await response.json();
+    console.log('Response parsed successfully');
 
     // Extract response based on provider
     let content;
@@ -295,32 +376,40 @@ async function callAIProvider(config, systemPrompt, userPrompt) {
       case PROVIDERS.GROQ:
       case PROVIDERS.OPENROUTER:
         content = data.choices?.[0]?.message?.content;
+        console.log('Extracted content from choices');
         break;
       case PROVIDERS.HUGGINGFACE:
         content = Array.isArray(data) ? data[0]?.generated_text : data.generated_text;
+        console.log('Extracted content from HuggingFace response');
         break;
     }
 
     if (!content) {
-      console.error('Invalid API response:', data);
+      console.error('No content in AI response');
+      console.error('Response structure:', JSON.stringify(data, null, 2));
       throw new Error('No content in AI response');
     }
 
+    console.log('Content extracted successfully, length:', content.length);
     return content;
 
   } catch (error) {
     clearTimeout(timeoutId);
     
     if (error.name === 'AbortError') {
+      console.error('Request timed out after 30 seconds');
       throw new Error('Request timeout: AI service took too long to respond');
     }
     
+    console.error('Error in callAIProvider:', error);
     throw error;
   }
 }
 
 // Extract enhanced prompt and improvements from AI response
 function extractEnhancedPrompt(response) {
+  console.log('Extracting enhanced prompt from response...');
+  
   // Try to parse structured response
   const enhancedMatch = response.match(/ENHANCED PROMPT:\s*([\s\S]*?)(?=IMPROVEMENTS:|$)/i);
   const improvementsMatch = response.match(/IMPROVEMENTS:\s*([\s\S]*?)$/i);
@@ -330,10 +419,12 @@ function extractEnhancedPrompt(response) {
 
   if (enhancedMatch) {
     enhanced = enhancedMatch[1].trim();
+    console.log('Found ENHANCED PROMPT section');
   } else {
     // Fallback: Use first substantial paragraph
     const paragraphs = response.split('\n\n').filter(p => p.trim().length > 50);
     enhanced = paragraphs[0]?.trim() || response.trim();
+    console.log('Using fallback extraction method');
   }
 
   if (improvementsMatch) {
@@ -343,6 +434,7 @@ function extractEnhancedPrompt(response) {
       .filter(line => line.trim().match(/^[-•*]\s+/))
       .map(line => line.replace(/^[-•*]\s+/, '').trim())
       .filter(Boolean);
+    console.log('Found', improvements.length, 'improvements');
   }
 
   // If no improvements found, extract from response
@@ -352,6 +444,7 @@ function extractEnhancedPrompt(response) {
       'Added structured format',
       'Improved instruction quality'
     ];
+    console.log('Using default improvements');
   }
 
   return {
