@@ -632,6 +632,12 @@ export default function PromptList({ activeTeam, userRole }) {
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2 ml-4">
+                     <FavoriteButton
+                      prompt={prompt}
+                      teamId={activeTeam}
+                      teamName={prompt.teamName}
+                      size="small"
+                    />
                     {/* ✅ NEW: AI Enhance Button */}
                     <button
                       onClick={() => handleAIEnhance(prompt)}
@@ -644,13 +650,6 @@ export default function PromptList({ activeTeam, userRole }) {
                     >
                       <span className="text-lg">✨</span>
                     </button>
-
-                    <FavoriteButton
-                      prompt={prompt}
-                      teamId={activeTeam}
-                      teamName={prompt.teamName}
-                      size="small"
-                    />
 
                     <button
                       onClick={() => handleCopy(prompt.text)}
