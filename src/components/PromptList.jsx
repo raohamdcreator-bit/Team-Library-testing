@@ -642,7 +642,7 @@ export default function PromptList({ activeTeam, userRole }) {
                       }}
                       title="Enhance with AI"
                     >
-                      <span className="text-lg">🤖</span>
+                      <span className="text-lg">✨</span>
                     </button>
 
                     <FavoriteButton
@@ -752,7 +752,7 @@ export default function PromptList({ activeTeam, userRole }) {
 
                 {/* Expanded Content */}
                 {isExpanded && (
-                  <div className="space-y-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+                  <div className="space-y-4 border-t pt-4" style={{ backgroundColor: "var(--secondary)", borderColor: "var(--border)" }}>
                     {/* AI Model Analysis */}
                     <CompactAITools text={prompt.text} />
 
