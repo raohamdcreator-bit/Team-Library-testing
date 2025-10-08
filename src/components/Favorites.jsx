@@ -1,4 +1,4 @@
-// src/components/Favorites.jsx - Updated to match demo UI
+// src/components/Favorites.jsx - FIXED VERSION
 import { useState, useEffect } from "react";
 import { db } from "../lib/firebase";
 import {
@@ -53,27 +53,66 @@ export function useFavorites() {
     return () => unsub();
   }, [user?.uid]);
 
-  async function addToFavorites(prompt, teamId, teamName) {
-    if (!user || !prompt) return;
+  // ✅ FIXED: Get team name if missing
+  async function getTeamName(teamId) {
+    try {
+      const teamDoc = await getDoc(doc(db, "teams", teamId));
+      if (teamDoc.exists()) {
+        return teamDoc.data().name || "Unknown Team";
+      }
+      return "Unknown Team";
+    } catch (error) {
+      console.error("Error fetching team name:", error);
+      return "Unknown Team";
+    }
+  }
 
-    const favoriteRef = doc(db, "users", user.uid, "favorites", prompt.id);
-    await setDoc(favoriteRef, {
-      promptId: prompt.id,
-      teamId,
-      teamName,
-      title: prompt.title,
-      text: prompt.text,
-      tags: prompt.tags || [],
-      originalAuthor: prompt.createdBy,
+  async function addToFavorites(prompt, teamId, teamName) {
+    if (!user || !prompt) {
+      console.error("Cannot add favorite: missing user or prompt");
+      return;
+    }
+
+    // ✅ FIXED: Fetch team name if not provided
+    let finalTeamName = teamName;
+    if (!finalTeamName && teamId) {
+      finalTeamName = await getTeamName(teamId);
+    }
+
+    // ✅ FIXED: Validate all required fields
+    const favoriteData = {
+      promptId: prompt.id || null,
+      teamId: teamId || null,
+      teamName: finalTeamName || "Unknown Team",
+      title: prompt.title || "Untitled Prompt",
+      text: prompt.text || "",
+      tags: Array.isArray(prompt.tags) ? prompt.tags : [],
+      originalAuthor: prompt.createdBy || null,
       addedAt: serverTimestamp(),
-      originalCreatedAt: prompt.createdAt,
-    });
+      originalCreatedAt: prompt.createdAt || null,
+    };
+
+    console.log("Adding favorite:", favoriteData);
+
+    try {
+      const favoriteRef = doc(db, "users", user.uid, "favorites", prompt.id);
+      await setDoc(favoriteRef, favoriteData);
+    } catch (error) {
+      console.error("Error adding favorite:", error);
+      throw error;
+    }
   }
 
   async function removeFromFavorites(favoriteId) {
     if (!user || !favoriteId) return;
-    const favoriteRef = doc(db, "users", user.uid, "favorites", favoriteId);
-    await deleteDoc(favoriteRef);
+    
+    try {
+      const favoriteRef = doc(db, "users", user.uid, "favorites", favoriteId);
+      await deleteDoc(favoriteRef);
+    } catch (error) {
+      console.error("Error removing favorite:", error);
+      throw error;
+    }
   }
 
   async function toggleFavorite(prompt, teamId, teamName) {
@@ -117,6 +156,7 @@ export function FavoriteButton({
 
     setIsToggling(true);
     try {
+      // ✅ FIXED: Ensure user profile exists
       const userRef = doc(db, "users", user.uid);
       await setDoc(
         userRef,
@@ -198,6 +238,7 @@ export default function FavoritesList() {
         ...new Set(favorites.map((f) => f.originalAuthor).filter(Boolean)),
       ];
       const profilesData = {};
+
       for (const authorId of authorIds) {
         try {
           const userDoc = await getDoc(doc(db, "users", authorId));
@@ -208,8 +249,10 @@ export default function FavoritesList() {
           console.error("Error loading author profile:", error);
         }
       }
+
       setProfiles(profilesData);
     }
+
     if (favorites.length > 0) fetchProfiles();
   }, [favorites]);
 
@@ -390,7 +433,7 @@ export default function FavoritesList() {
                     >
                       <div className="flex items-center gap-1">
                         <span>🏢</span>
-                        <span>{favorite.teamName}</span>
+                        <span>{favorite.teamName || "Unknown Team"}</span>
                       </div>
                       {author && (
                         <>
