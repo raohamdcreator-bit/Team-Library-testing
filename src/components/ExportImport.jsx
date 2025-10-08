@@ -1,4 +1,4 @@
-// src/components/ExportImport.jsx - Updated to match futuristic AI theme
+// src/components/ExportImport.jsx - Updated to match PromptList UI style
 import { useState } from "react";
 
 export default function ExportImport({ onImport, teamId, teamName, userRole }) {
@@ -169,62 +169,52 @@ export default function ExportImport({ onImport, teamId, teamName, userRole }) {
   if (!canImport()) return null;
 
   return (
-    <div 
-      className="mt-6 p-6 rounded-xl backdrop-blur-sm border border-gray-600/50 shadow-2xl shadow-blue-900/20 transition-all duration-300 hover:shadow-cyan-500/10"
-      style={{
-        background: "linear-gradient(135deg, rgba(17, 24, 39, 0.8) 0%, rgba(31, 41, 55, 0.9) 100%)",
-        animation: "fadeIn 0.5s ease-out",
-      }}
-    >
+    <div className="glass-card p-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 transition-transform duration-300 hover:scale-110 hover:rotate-12">
-          <span className="text-xs text-white font-bold">📥</span>
-        </div>
-        <h3 className="text-lg font-bold text-cyan-100">
+        <span className="text-2xl">📥</span>
+        <h3 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>
           Import Prompts
         </h3>
       </div>
 
       {/* Drag and Drop Zone */}
       <div
-        className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${
-          dragActive
-            ? "border-cyan-400 bg-cyan-400/10 scale-105 shadow-lg shadow-cyan-500/25"
-            : "border-gray-600/50 hover:border-cyan-400/50 hover:bg-gray-800/40"
+        className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-300 ${
+          dragActive ? "scale-105" : ""
         }`}
+        style={{
+          borderColor: dragActive ? "var(--primary)" : "var(--border)",
+          backgroundColor: dragActive ? "var(--primary)/10" : "var(--muted)",
+        }}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        style={{
-          background: dragActive 
-            ? "linear-gradient(135deg, rgba(0, 200, 255, 0.1) 0%, rgba(59, 130, 246, 0.15) 100%)"
-            : "linear-gradient(135deg, rgba(17, 24, 39, 0.4) 0%, rgba(31, 41, 55, 0.6) 100%)",
-        }}
       >
         {importing ? (
           <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin shadow-lg shadow-cyan-500/25"></div>
-            <p className="text-cyan-100 font-medium">Processing file...</p>
-            <p className="text-gray-400 text-sm">Neural network analyzing data...</p>
+            <div className="neo-spinner w-12 h-12"></div>
+            <p className="font-medium" style={{ color: "var(--foreground)" }}>
+              Processing file...
+            </p>
+            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+              Analyzing data...
+            </p>
           </div>
         ) : (
           <>
-            <div 
-              className="text-6xl mb-4 transition-transform duration-300 hover:scale-110 inline-block"
-              style={{ filter: "drop-shadow(0 0 20px rgba(0, 200, 255, 0.3))" }}
-            >
+            <div className="text-6xl mb-4 transition-transform duration-300 hover:scale-110">
               📁
             </div>
-            <p className="text-cyan-100 mb-2 font-semibold text-lg">
+            <p className="mb-2 font-semibold text-lg" style={{ color: "var(--foreground)" }}>
               {dragActive ? "Drop file to upload" : "Drop files here or click to browse"}
             </p>
-            <p className="text-gray-400 text-sm mb-6">
+            <p className="text-sm mb-6" style={{ color: "var(--muted-foreground)" }}>
               Supports JSON, CSV, and TXT files
             </p>
 
-            <label className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-cyan-400 hover:to-blue-500 transition-all duration-200 font-semibold shadow-lg shadow-cyan-500/25 border border-cyan-400/30 cursor-pointer hover:scale-105 active:scale-95">
+            <label className="btn-primary inline-flex items-center gap-2 px-6 py-3 cursor-pointer">
               <span className="text-lg">⬆️</span>
               Choose File
               <input
@@ -241,39 +231,61 @@ export default function ExportImport({ onImport, teamId, teamName, userRole }) {
       {/* Format Instructions */}
       <div className="mt-8 space-y-4">
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-1 h-6 bg-gradient-to-b from-cyan-400 to-blue-600 rounded-full"></div>
-          <h4 className="font-semibold text-cyan-100">Supported Formats</h4>
+          <div className="w-1 h-6 rounded-full" style={{ backgroundColor: "var(--primary)" }}></div>
+          <h4 className="font-semibold" style={{ color: "var(--foreground)" }}>
+            Supported Formats
+          </h4>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* JSON Format */}
           <div 
-            className="bg-gray-800/60 p-4 rounded-lg border border-gray-600/50 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 hover:scale-105"
+            className="p-4 rounded-lg border transition-all duration-300 hover:border-primary/50"
             style={{
-              background: "linear-gradient(135deg, rgba(17, 24, 39, 0.6) 0%, rgba(31, 41, 55, 0.8) 100%)",
+              backgroundColor: "var(--card)",
+              borderColor: "var(--border)",
             }}
           >
             <div className="flex items-center gap-2 mb-3">
               <span className="text-2xl">📋</span>
-              <h5 className="font-semibold text-cyan-100">JSON</h5>
+              <h5 className="font-semibold" style={{ color: "var(--foreground)" }}>
+                JSON
+              </h5>
             </div>
-            <code className="text-xs text-gray-300 block bg-gray-900/60 p-3 rounded border border-gray-700/50 font-mono leading-relaxed">
+            <code 
+              className="text-xs block p-3 rounded border font-mono leading-relaxed"
+              style={{
+                backgroundColor: "var(--muted)",
+                color: "var(--foreground)",
+                borderColor: "var(--border)",
+              }}
+            >
               {`[{\n  "title": "...",\n  "text": "...",\n  "tags": [...]\n}]`}
             </code>
           </div>
 
           {/* CSV Format */}
           <div 
-            className="bg-gray-800/60 p-4 rounded-lg border border-gray-600/50 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 hover:scale-105"
+            className="p-4 rounded-lg border transition-all duration-300 hover:border-primary/50"
             style={{
-              background: "linear-gradient(135deg, rgba(17, 24, 39, 0.6) 0%, rgba(31, 41, 55, 0.8) 100%)",
+              backgroundColor: "var(--card)",
+              borderColor: "var(--border)",
             }}
           >
             <div className="flex items-center gap-2 mb-3">
               <span className="text-2xl">📊</span>
-              <h5 className="font-semibold text-cyan-100">CSV</h5>
+              <h5 className="font-semibold" style={{ color: "var(--foreground)" }}>
+                CSV
+              </h5>
             </div>
-            <code className="text-xs text-gray-300 block bg-gray-900/60 p-3 rounded border border-gray-700/50 font-mono leading-relaxed">
+            <code 
+              className="text-xs block p-3 rounded border font-mono leading-relaxed"
+              style={{
+                backgroundColor: "var(--muted)",
+                color: "var(--foreground)",
+                borderColor: "var(--border)",
+              }}
+            >
               title,text,tags
               <br />
               "Title","Content","tag1,tag2"
@@ -282,16 +294,26 @@ export default function ExportImport({ onImport, teamId, teamName, userRole }) {
 
           {/* TXT Format */}
           <div 
-            className="bg-gray-800/60 p-4 rounded-lg border border-gray-600/50 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 hover:scale-105"
+            className="p-4 rounded-lg border transition-all duration-300 hover:border-primary/50"
             style={{
-              background: "linear-gradient(135deg, rgba(17, 24, 39, 0.6) 0%, rgba(31, 41, 55, 0.8) 100%)",
+              backgroundColor: "var(--card)",
+              borderColor: "var(--border)",
             }}
           >
             <div className="flex items-center gap-2 mb-3">
               <span className="text-2xl">📝</span>
-              <h5 className="font-semibold text-cyan-100">TXT</h5>
+              <h5 className="font-semibold" style={{ color: "var(--foreground)" }}>
+                TXT
+              </h5>
             </div>
-            <code className="text-xs text-gray-300 block bg-gray-900/60 p-3 rounded border border-gray-700/50 font-mono leading-relaxed">
+            <code 
+              className="text-xs block p-3 rounded border font-mono leading-relaxed"
+              style={{
+                backgroundColor: "var(--muted)",
+                color: "var(--foreground)",
+                borderColor: "var(--border)",
+              }}
+            >
               Title
               <br />
               Content here
@@ -307,26 +329,29 @@ export default function ExportImport({ onImport, teamId, teamName, userRole }) {
 
         {/* Tips Section */}
         <div 
-          className="mt-6 p-4 rounded-lg border border-blue-500/30 bg-blue-500/10 backdrop-blur-sm"
+          className="mt-6 p-4 rounded-lg border"
           style={{
-            background: "linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(0, 200, 255, 0.15) 100%)",
+            backgroundColor: "var(--secondary)",
+            borderColor: "var(--primary)",
           }}
         >
           <div className="flex items-start gap-3">
             <span className="text-xl">💡</span>
             <div>
-              <h5 className="font-semibold text-cyan-100 mb-2">Pro Tips</h5>
-              <ul className="text-sm text-gray-300 space-y-1">
+              <h5 className="font-semibold mb-2" style={{ color: "var(--foreground)" }}>
+                Pro Tips
+              </h5>
+              <ul className="text-sm space-y-1" style={{ color: "var(--foreground)" }}>
                 <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 mt-1">•</span>
+                  <span style={{ color: "var(--primary)" }}>•</span>
                   <span>Ensure your CSV has headers for proper field mapping</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 mt-1">•</span>
+                  <span style={{ color: "var(--primary)" }}>•</span>
                   <span>Use --- or === to separate multiple prompts in TXT files</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 mt-1">•</span>
+                  <span style={{ color: "var(--primary)" }}>•</span>
                   <span>JSON arrays allow batch importing multiple prompts at once</span>
                 </li>
               </ul>
@@ -416,18 +441,3 @@ export const ExportUtils = {
     URL.revokeObjectURL(url);
   },
 };
-
-// Add keyframe animations to document
-if (typeof document !== 'undefined') {
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-  `;
-  if (!document.querySelector('style[data-export-import-styles]')) {
-    style.setAttribute('data-export-import-styles', 'true');
-    document.head.appendChild(style);
-  }
-}
