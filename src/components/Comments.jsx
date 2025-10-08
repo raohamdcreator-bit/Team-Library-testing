@@ -1,4 +1,4 @@
-// src/components/Comments.jsx - Updated to match futuristic AI theme
+// src/components/Comments.jsx - Updated to match PromptList UI style
 import { useState, useEffect } from "react";
 import { db } from "../lib/firebase";
 import {
@@ -108,11 +108,10 @@ export function Comment({
     if (!src || imageError) {
       return (
         <div
-          className={`${avatarClass} ${className} rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/25 border-2 border-cyan-400/50 transition-transform duration-300 hover:scale-110`}
+          className={`${avatarClass} ${className} rounded-full flex items-center justify-center text-white font-bold transition-transform duration-300 hover:scale-110`}
+          style={{ backgroundColor: "var(--primary)" }}
         >
-          <span className={`${initialsClass} drop-shadow-sm`}>
-            {getUserInitials(name, email)}
-          </span>
+          <span className={initialsClass}>{getUserInitials(name, email)}</span>
         </div>
       );
     }
@@ -121,7 +120,8 @@ export function Comment({
       <img
         src={src}
         alt="avatar"
-        className={`${avatarClass} ${className} rounded-full border-2 border-cyan-400/50 shadow-lg shadow-blue-500/25 transition-transform duration-300 hover:scale-110`}
+        className={`${avatarClass} ${className} rounded-full border-2 transition-transform duration-300 hover:scale-110`}
+        style={{ borderColor: "var(--border)" }}
         onError={() => setImageError(true)}
       />
     );
@@ -165,16 +165,12 @@ export function Comment({
 
   return (
     <div
-      className={`group flex gap-4 p-4 rounded-xl backdrop-blur-sm border transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 hover:border-cyan-400/30 ${
-        comment.parentId
-          ? "bg-gray-900/40 ml-8 border-gray-700/50 shadow-inner shadow-blue-900/20"
-          : "bg-gray-800/60 border-gray-600/50 shadow-lg shadow-blue-900/20"
+      className={`group flex gap-4 p-4 rounded-lg border transition-all duration-300 hover:border-primary/50 ${
+        comment.parentId ? "ml-8 bg-muted/30" : ""
       }`}
       style={{
-        background: comment.parentId
-          ? "linear-gradient(135deg, rgba(17, 24, 39, 0.4) 0%, rgba(31, 41, 55, 0.6) 100%)"
-          : "linear-gradient(135deg, rgba(17, 24, 39, 0.8) 0%, rgba(31, 41, 55, 0.9) 100%)",
-        animation: "fadeIn 0.5s ease-out, slideUp 0.5s ease-out",
+        backgroundColor: comment.parentId ? "var(--muted)" : "var(--card)",
+        borderColor: "var(--border)",
       }}
     >
       <UserAvatar
@@ -188,14 +184,13 @@ export function Comment({
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-semibold text-cyan-100 drop-shadow-sm">
+            <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
               {profile?.name || profile?.email || "Unknown user"}
             </span>
-            <div className="flex items-center gap-1 text-xs text-gray-400">
-              <span className="w-1 h-1 bg-cyan-400 rounded-full animate-pulse"></span>
+            <div className="flex items-center gap-2 text-xs" style={{ color: "var(--muted-foreground)" }}>
               <span>{formatDate(comment.createdAt)}</span>
               {comment.updatedAt && (
-                <span className="text-blue-400 font-medium">(edited)</span>
+                <span className="font-medium">(edited)</span>
               )}
             </div>
           </div>
@@ -204,13 +199,21 @@ export function Comment({
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
               <button
                 onClick={() => setIsEditing(!isEditing)}
-                className="text-xs text-cyan-400 hover:text-cyan-300 px-3 py-1.5 rounded-lg bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-400/30 transition-all duration-200 backdrop-blur-sm font-medium hover:scale-105 active:scale-95"
+                className="text-xs px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
+                style={{
+                  backgroundColor: "var(--secondary)",
+                  color: "var(--foreground)",
+                }}
               >
                 {isEditing ? "Cancel" : "Edit"}
               </button>
               <button
                 onClick={() => onDelete(comment.id)}
-                className="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg bg-red-400/10 hover:bg-red-400/20 border border-red-400/30 transition-all duration-200 backdrop-blur-sm font-medium hover:scale-105 active:scale-95"
+                className="text-xs px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
+                style={{
+                  backgroundColor: "var(--destructive)",
+                  color: "var(--destructive-foreground)",
+                }}
               >
                 Delete
               </button>
@@ -219,23 +222,19 @@ export function Comment({
         </div>
 
         {isEditing ? (
-          <div className="space-y-3" style={{ animation: "fadeIn 0.3s ease-out" }}>
+          <div className="space-y-3">
             <textarea
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
-              className="w-full bg-gray-900/60 border border-cyan-400/30 rounded-lg p-3 text-sm text-cyan-100 resize-none focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/60 backdrop-blur-sm placeholder-gray-400 transition-all duration-200"
+              className="form-input resize-none"
               rows={3}
               placeholder="Edit your comment..."
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(17, 24, 39, 0.8) 0%, rgba(31, 41, 55, 0.9) 100%)",
-              }}
             />
             <div className="flex gap-2">
               <button
                 onClick={handleEdit}
                 disabled={!editText.trim()}
-                className="text-xs bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 hover:from-cyan-400 hover:to-blue-500 transition-all duration-200 font-medium shadow-lg shadow-cyan-500/25 border border-cyan-400/30 hover:scale-105 active:scale-95 disabled:hover:scale-100"
+                className="btn-primary text-xs px-4 py-2"
               >
                 Save
               </button>
@@ -244,7 +243,7 @@ export function Comment({
                   setIsEditing(false);
                   setEditText(comment.text);
                 }}
-                className="text-xs bg-gray-700/80 text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-600/80 transition-all duration-200 font-medium border border-gray-500/30 hover:scale-105 active:scale-95"
+                className="btn-secondary text-xs px-4 py-2"
               >
                 Cancel
               </button>
@@ -252,7 +251,7 @@ export function Comment({
           </div>
         ) : (
           <div>
-            <p className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">
+            <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: "var(--foreground)" }}>
               {comment.text}
             </p>
 
@@ -260,12 +259,10 @@ export function Comment({
               <div className="mt-3">
                 <button
                   onClick={() => setShowReplyForm(!showReplyForm)}
-                  className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold transition-all duration-200 flex items-center gap-1 hover:gap-2"
+                  className="text-xs font-semibold transition-all duration-200 hover:underline"
+                  style={{ color: "var(--primary)" }}
                 >
-                  <span className="w-3 h-3 border border-cyan-400 rounded-sm flex items-center justify-center transition-transform duration-200 hover:rotate-90">
-                    <span className="w-1 h-1 bg-cyan-400 rounded-full"></span>
-                  </span>
-                  Reply
+                  💬 Reply
                 </button>
               </div>
             )}
@@ -273,10 +270,7 @@ export function Comment({
         )}
 
         {showReplyForm && (
-          <div 
-            className="mt-4 p-3 rounded-lg bg-gray-900/40 border border-gray-700/50"
-            style={{ animation: "fadeIn 0.3s ease-out, slideDown 0.3s ease-out" }}
-          >
+          <div className="mt-4 p-3 rounded-lg border" style={{ backgroundColor: "var(--muted)", borderColor: "var(--border)" }}>
             <CommentForm
               onSubmit={(text) => {
                 onReply(comment.id, text);
@@ -325,29 +319,25 @@ export function CommentForm({
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-gray-900/60 border border-cyan-400/30 rounded-xl p-4 text-sm text-cyan-100 resize-none focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/60 backdrop-blur-sm placeholder-gray-400 transition-all duration-200 hover:border-cyan-400/50"
+        className="form-input resize-none"
         rows={3}
         autoFocus={autoFocus}
         disabled={isSubmitting}
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(17, 24, 39, 0.8) 0%, rgba(31, 41, 55, 0.9) 100%)",
-        }}
       />
       <div className="flex items-center justify-between">
-        <div className="text-xs text-gray-400 flex items-center gap-2">
+        <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>
           <span
-            className={`font-medium transition-colors duration-200 ${
+            className={`font-medium ${
               text.length > 400
-                ? "text-amber-400"
+                ? "text-yellow-500"
                 : text.length > 450
-                ? "text-red-400"
-                : "text-cyan-400"
+                ? "text-red-500"
+                : ""
             }`}
           >
             {text.length}/500
           </span>
-          <span className="text-gray-500">characters</span>
+          <span className="ml-1">characters</span>
         </div>
         <div className="flex gap-2">
           {onCancel && (
@@ -355,7 +345,7 @@ export function CommentForm({
               type="button"
               onClick={onCancel}
               disabled={isSubmitting}
-              className="text-xs bg-gray-700/80 text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-600/80 transition-all duration-200 disabled:opacity-50 font-medium border border-gray-500/30 hover:scale-105 active:scale-95 disabled:hover:scale-100"
+              className="btn-secondary text-xs px-4 py-2"
             >
               Cancel
             </button>
@@ -363,11 +353,9 @@ export function CommentForm({
           <button
             type="submit"
             disabled={!text.trim() || isSubmitting || text.length > 500}
-            className="text-xs bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-cyan-400 hover:to-blue-500 transition-all duration-200 disabled:opacity-50 flex items-center gap-2 font-medium shadow-lg shadow-cyan-500/25 border border-cyan-400/30 hover:scale-105 active:scale-95 disabled:hover:scale-100"
+            className="btn-primary text-xs px-4 py-2 flex items-center gap-2"
           >
-            {isSubmitting && (
-              <div className="w-3 h-3 border-2 border-cyan-300 border-t-transparent rounded-full animate-spin"></div>
-            )}
+            {isSubmitting && <div className="neo-spinner w-3 h-3"></div>}
             {submitText}
           </button>
         </div>
@@ -459,41 +447,24 @@ export default function Comments({ teamId, promptId, userRole }) {
 
   if (loading) {
     return (
-      <div
-        className="mt-6 p-6 rounded-xl backdrop-blur-sm border border-gray-600/50 shadow-2xl shadow-blue-900/20"
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(17, 24, 39, 0.8) 0%, rgba(31, 41, 55, 0.9) 100%)",
-        }}
-      >
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-cyan-100 text-sm font-medium">
-            Loading neural comments...
-          </span>
-        </div>
+      <div className="glass-card p-6 text-center">
+        <div className="neo-spinner mx-auto mb-4"></div>
+        <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+          Loading comments...
+        </span>
       </div>
     );
   }
 
   return (
-    <div
-      className="mt-6 rounded-xl backdrop-blur-sm border border-gray-600/50 shadow-2xl shadow-blue-900/20 overflow-hidden transition-all duration-300 hover:shadow-cyan-500/10"
-      style={{
-        background:
-          "linear-gradient(135deg, rgba(17, 24, 39, 0.8) 0%, rgba(31, 41, 55, 0.9) 100%)",
-        animation: "fadeIn 0.5s ease-out",
-      }}
-    >
-      <div className="p-6 border-b border-gray-600/50 bg-gradient-to-r from-gray-800/60 to-gray-700/60 backdrop-blur-sm">
+    <div className="glass-card overflow-hidden">
+      {/* Header */}
+      <div className="p-6 border-b" style={{ borderColor: "var(--border)" }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 transition-transform duration-300 hover:scale-110 hover:rotate-12">
-              <span className="text-xs text-white font-bold">💬</span>
-            </div>
-            <h3 className="font-bold text-cyan-100 flex items-center gap-2">
-              Neural Comments
-              <span className="px-2 py-1 text-xs bg-cyan-400/20 text-cyan-300 rounded-full border border-cyan-400/30 font-normal transition-all duration-200 hover:bg-cyan-400/30">
+            <h3 className="font-bold" style={{ color: "var(--foreground)" }}>
+              💬 Comments
+              <span className="ml-2 px-2 py-1 text-xs rounded-full" style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}>
                 {commentCount}
               </span>
             </h3>
@@ -502,56 +473,46 @@ export default function Comments({ teamId, promptId, userRole }) {
           {!showCommentForm && (
             <button
               onClick={() => setShowCommentForm(true)}
-              className="group text-sm bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-cyan-400 hover:to-blue-500 transition-all duration-200 font-semibold shadow-lg shadow-cyan-500/25 border border-cyan-400/30 flex items-center gap-2 hover:scale-105 active:scale-95"
+              className="btn-primary text-sm px-4 py-2"
             >
-              <span className="w-3 h-3 border border-white rounded-sm flex items-center justify-center transition-transform duration-200 group-hover:rotate-90">
-                <span className="text-xs">+</span>
-              </span>
+              <span className="mr-2">+</span>
               Add Comment
             </button>
           )}
         </div>
       </div>
 
+      {/* Comment Form */}
       {showCommentForm && (
-        <div 
-          className="p-6 border-b border-gray-600/50 bg-gray-900/40"
-          style={{ animation: "fadeIn 0.3s ease-out, slideDown 0.3s ease-out" }}
-        >
+        <div className="p-6 border-b" style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}>
           <CommentForm
             onSubmit={(text) => {
               handleAddComment(text);
               setShowCommentForm(false);
             }}
             onCancel={() => setShowCommentForm(false)}
-            placeholder="Share your neural insights about this prompt..."
+            placeholder="Share your thoughts about this prompt..."
             autoFocus={true}
           />
         </div>
       )}
 
+      {/* Comments List */}
       <div className="p-6">
         {topLevelComments.length === 0 ? (
           <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-cyan-400/20 to-blue-600/20 flex items-center justify-center border border-cyan-400/30 transition-transform duration-300 hover:scale-110 hover:rotate-12">
-              <span className="text-2xl text-cyan-400">🤖</span>
-            </div>
-            <p className="text-gray-400 text-lg font-medium mb-2">
-              No neural comments detected
+            <div className="text-4xl mb-4">💬</div>
+            <p className="text-lg font-medium mb-2" style={{ color: "var(--foreground)" }}>
+              No comments yet
             </p>
-            <p className="text-gray-500 text-sm">
-              Be the first to initialize the conversation matrix!
+            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+              Be the first to share your thoughts!
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {topLevelComments.map((comment, index) => (
-              <div 
-                key={comment.id} 
-                style={{ 
-                  animation: `fadeIn 0.5s ease-out ${index * 0.1}s backwards, slideUp 0.5s ease-out ${index * 0.1}s backwards` 
-                }}
-              >
+          <div className="space-y-4">
+            {topLevelComments.map((comment) => (
+              <div key={comment.id}>
                 <Comment
                   comment={comment}
                   profile={profiles[comment.createdBy]}
@@ -561,25 +522,18 @@ export default function Comments({ teamId, promptId, userRole }) {
                   canModify={canModifyComment(comment)}
                 />
 
+                {/* Replies */}
                 {comment.replies && comment.replies.length > 0 && (
-                  <div className="mt-4 space-y-4 relative">
-                    <div className="absolute left-6 top-0 bottom-0 w-px bg-gradient-to-b from-cyan-400/50 to-transparent"></div>
-
-                    {comment.replies.map((reply, replyIndex) => (
-                      <div
+                  <div className="mt-4 space-y-4">
+                    {comment.replies.map((reply) => (
+                      <Comment
                         key={reply.id}
-                        style={{
-                          animation: `fadeIn 0.5s ease-out ${(index * 0.1) + (replyIndex * 0.1) + 0.2}s backwards, slideUp 0.5s ease-out ${(index * 0.1) + (replyIndex * 0.1) + 0.2}s backwards`,
-                        }}
-                      >
-                        <Comment
-                          comment={reply}
-                          profile={profiles[reply.createdBy]}
-                          onDelete={handleDeleteComment}
-                          onEdit={handleEditComment}
-                          canModify={canModifyComment(reply)}
-                        />
-                      </div>
+                        comment={reply}
+                        profile={profiles[reply.createdBy]}
+                        onDelete={handleDeleteComment}
+                        onEdit={handleEditComment}
+                        canModify={canModifyComment(reply)}
+                      />
                     ))}
                   </div>
                 )}
@@ -590,32 +544,4 @@ export default function Comments({ teamId, promptId, userRole }) {
       </div>
     </div>
   );
-}
-
-// Add keyframe animations to document
-if (typeof document !== 'undefined') {
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    
-    @keyframes slideUp {
-      from { transform: translateY(10px); }
-      to { transform: translateY(0); }
-    }
-    
-    @keyframes slideDown {
-      from { 
-        opacity: 0;
-        transform: translateY(-10px); 
-      }
-      to { 
-        opacity: 1;
-        transform: translateY(0); 
-      }
-    }
-  `;
-  document.head.appendChild(style);
 }
