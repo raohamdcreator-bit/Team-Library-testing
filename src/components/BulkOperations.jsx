@@ -1,4 +1,4 @@
-// src/components/BulkOperations.jsx
+// src/components/BulkOperations.jsx - Cyberpunk Neon Blue Theme
 import { useState } from "react";
 
 export default function BulkOperations({
@@ -92,29 +92,47 @@ export default function BulkOperations({
   if (prompts.length === 0) return null;
 
   return (
-    <div className="bg-white border rounded-lg p-4 mb-4 shadow-sm">
+    <div 
+      className="glass-card border rounded-lg p-4 mb-4 transition-all duration-300"
+      style={{ 
+        borderColor: 'var(--border)',
+        boxShadow: '0 0 20px rgba(0, 200, 255, 0.1)',
+      }}
+    >
       {/* Selection Controls */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex items-center gap-2 cursor-pointer group">
             <input
               type="checkbox"
               checked={
                 selectedPrompts.length === prompts.length && prompts.length > 0
               }
               onChange={handleSelectAll}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="rounded"
+              style={{ 
+                accentColor: 'var(--primary)',
+                width: '18px',
+                height: '18px',
+              }}
             />
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
               Select All ({prompts.length})
             </span>
           </label>
 
           {selectedPrompts.length > 0 && (
-            <div className="text-sm text-gray-600">
+            <div 
+              className="text-sm px-3 py-1 rounded-full"
+              style={{
+                background: 'rgba(0, 200, 255, 0.2)',
+                color: 'var(--primary)',
+                border: '1px solid rgba(0, 200, 255, 0.3)',
+              }}
+            >
               {selectedPrompts.length} selected
               {selectionStats.ownedByOthers > 0 && (
-                <span className="ml-2 text-amber-600">
+                <span className="ml-2" style={{ color: '#eab308' }}>
                   ({selectionStats.ownedByOthers} by others)
                 </span>
               )}
@@ -125,7 +143,19 @@ export default function BulkOperations({
         {selectedPrompts.length > 0 && (
           <button
             onClick={() => onSelectionChange([])}
-            className="text-gray-600 hover:text-gray-800 text-sm px-2 py-1 rounded transition-colors"
+            className="text-sm px-3 py-1 rounded transition-all duration-300"
+            style={{ 
+              color: 'var(--muted-foreground)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--primary)';
+              e.currentTarget.style.borderColor = 'var(--primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--muted-foreground)';
+              e.currentTarget.style.borderColor = 'var(--border)';
+            }}
           >
             Clear Selection
           </button>
@@ -134,8 +164,12 @@ export default function BulkOperations({
 
       {/* Bulk Actions */}
       {selectedPrompts.length > 0 && (
-        <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
-          <span className="text-sm font-medium text-gray-700">
+        <div 
+          className="flex items-center gap-3 pt-4 flex-wrap"
+          style={{ borderTop: '1px solid var(--border)' }}
+        >
+          <span className="text-sm font-medium flex items-center gap-2" style={{ color: 'var(--primary)' }}>
+            <span>⚡</span>
             Bulk Actions:
           </span>
 
@@ -144,27 +178,27 @@ export default function BulkOperations({
             <button
               onClick={() => handleBulkExport("json")}
               disabled={isExporting}
-              className="btn-secondary text-sm px-3 py-1.5 flex items-center gap-1"
+              className="btn-secondary text-sm px-3 py-1.5 flex items-center gap-1 disabled:opacity-50"
             >
-              {isExporting && <div className="spinner"></div>}
+              {isExporting && <div className="neo-spinner w-3 h-3"></div>}
               Export JSON
             </button>
 
             <button
               onClick={() => handleBulkExport("csv")}
               disabled={isExporting}
-              className="btn-secondary text-sm px-3 py-1.5 flex items-center gap-1"
+              className="btn-secondary text-sm px-3 py-1.5 flex items-center gap-1 disabled:opacity-50"
             >
-              {isExporting && <div className="spinner"></div>}
+              {isExporting && <div className="neo-spinner w-3 h-3"></div>}
               Export CSV
             </button>
 
             <button
               onClick={() => handleBulkExport("txt")}
               disabled={isExporting}
-              className="btn-secondary text-sm px-3 py-1.5 flex items-center gap-1"
+              className="btn-secondary text-sm px-3 py-1.5 flex items-center gap-1 disabled:opacity-50"
             >
-              {isExporting && <div className="spinner"></div>}
+              {isExporting && <div className="neo-spinner w-3 h-3"></div>}
               Export TXT
             </button>
           </div>
@@ -174,15 +208,15 @@ export default function BulkOperations({
             <button
               onClick={handleBulkDelete}
               disabled={isDeleting}
-              className="btn-danger text-sm px-3 py-1.5 flex items-center gap-1 ml-2"
+              className="btn-danger text-sm px-3 py-1.5 flex items-center gap-1 ml-2 disabled:opacity-50"
             >
-              {isDeleting && <div className="spinner"></div>}
+              {isDeleting && <div className="neo-spinner w-3 h-3"></div>}
               Delete Selected
             </button>
           )}
 
           {!canBulkDelete() && selectionStats.ownedByOthers > 0 && (
-            <span className="text-xs text-amber-600 ml-2">
+            <span className="text-xs ml-2" style={{ color: '#eab308' }}>
               Cannot delete prompts created by others
             </span>
           )}
@@ -205,7 +239,12 @@ export function PromptSelector({
         type="checkbox"
         checked={isSelected}
         onChange={(e) => onSelectionChange(promptId, e.target.checked)}
-        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        className="rounded"
+        style={{ 
+          accentColor: 'var(--primary)',
+          width: '18px',
+          height: '18px',
+        }}
         onClick={(e) => e.stopPropagation()} // Prevent event bubbling
       />
     </label>
