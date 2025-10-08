@@ -434,20 +434,39 @@ export default function PromptList({ activeTeam, userRole }) {
     );
   }
 
-  // Simple text-based icons that will definitely work
-  function getIconText(name) {
-    const icons = {
-      add: '+',
-      close: '×',
-      sparkles: '✨',
-      copy: '⎘',
-      edit: '✎',
-      trash: '🗑',
-      chevronUp: '▲',
-      chevronDown: '▼',
-      document: '📄',
+  // Proper SVG icon components
+  function Icon({ name, className = "w-5 h-5" }) {
+    const iconPaths = {
+      add: "M12 4v16m8-8H4",
+      close: "M6 18L18 6M6 6l12 12",
+      sparkles: "M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z",
+      copy: "M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z",
+      edit: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
+      trash: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
+      chevronUp: "M5 15l7-7 7 7",
+      chevronDown: "M19 9l-7 7-7-7",
+      document: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
     };
-    return icons[name] || '';
+
+    const path = iconPaths[name];
+    if (!path) return null;
+
+    return (
+      <svg 
+        className={className} 
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
+          strokeWidth={2} 
+          d={path}
+        />
+      </svg>
+    );
   }
 
   // Loading state
@@ -482,7 +501,7 @@ export default function PromptList({ activeTeam, userRole }) {
             onClick={() => setShowCreateForm(!showCreateForm)}
             className="btn-primary px-6 py-3 flex items-center gap-2"
           >
-            <span className="text-xl">{getIconText(showCreateForm ? "close" : "add")}</span>
+            <Icon name={showCreateForm ? "close" : "add"} />
             <span>{showCreateForm ? "Cancel" : "New Prompt"}</span>
           </button>
         </div>
@@ -607,7 +626,7 @@ export default function PromptList({ activeTeam, userRole }) {
       {/* Prompts List */}
       {pagination.currentItems.length === 0 ? (
         <div className="glass-card p-12 text-center">
-          <div className="text-6xl mb-4">{getIconText("document")}</div>
+          <Icon name="document" className="mx-auto mb-4 w-16 h-16 opacity-50" />
           <h3
             className="text-lg font-semibold mb-2"
             style={{ color: "var(--foreground)" }}
@@ -700,7 +719,7 @@ export default function PromptList({ activeTeam, userRole }) {
                       }}
                       title="Enhance with AI"
                     >
-                      <span className="text-lg">{getIconText("sparkles")}</span>
+                      <Icon name="sparkles" />
                     </button>
 
                     <button
@@ -712,7 +731,7 @@ export default function PromptList({ activeTeam, userRole }) {
                       }}
                       title="Copy to clipboard"
                     >
-                      <span className="text-lg">{getIconText("copy")}</span>
+                      <Icon name="copy" />
                     </button>
 
                     {canEditPrompt(prompt) && (
@@ -729,7 +748,7 @@ export default function PromptList({ activeTeam, userRole }) {
                           }}
                           title="Edit prompt"
                         >
-                          <span className="text-lg">{getIconText("edit")}</span>
+                          <Icon name="edit" />
                         </button>
 
                         <button
@@ -741,7 +760,7 @@ export default function PromptList({ activeTeam, userRole }) {
                           }}
                           title="Delete prompt"
                         >
-                          <span className="text-lg">{getIconText("trash")}</span>
+                          <Icon name="trash" />
                         </button>
                       </>
                     )}
@@ -757,7 +776,7 @@ export default function PromptList({ activeTeam, userRole }) {
                       }}
                       title={isExpanded ? "Collapse" : "Expand"}
                     >
-                      <span className="text-lg">{getIconText(isExpanded ? "chevronUp" : "chevronDown")}</span>
+                      <Icon name={isExpanded ? "chevronUp" : "chevronDown"} />
                     </button>
                   </div>
                 </div>
