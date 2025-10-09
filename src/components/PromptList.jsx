@@ -1,17 +1,13 @@
-// src/components/PromptList.jsx - Complete Updated File with AI Enhancement
-import { useState, useEffect, useMemo } from "react";
+// src/components/PromptList.jsx - Fixed SVG Icons
+import { useState, useEffect } from "react";
 import { db } from "../lib/firebase";
 import {
   collection,
   onSnapshot,
   query,
   orderBy,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
   getDoc,
+  doc,
 } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import { savePrompt, updatePrompt, deletePrompt } from "../lib/prompts";
@@ -24,6 +20,51 @@ import BulkOperations, { PromptSelector } from "./BulkOperations";
 import ExportImport, { ExportUtils } from "./ExportImport";
 import usePagination, { PaginationControls } from "../hooks/usePagination";
 import AIPromptEnhancer from "./AIPromptEnhancer";
+
+// SVG Icon Component
+function Icon({ name, className = "w-5 h-5" }) {
+  const icons = {
+    add: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+    ),
+    close: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    ),
+    sparkles: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+    ),
+    copy: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+    ),
+    edit: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    ),
+    trash: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    ),
+    chevronUp: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+    ),
+    chevronDown: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    ),
+    document: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    ),
+  };
+
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {icons[name]}
+    </svg>
+  );
+}
 
 export default function PromptList({ activeTeam, userRole }) {
   const { user } = useAuth();
@@ -38,13 +79,10 @@ export default function PromptList({ activeTeam, userRole }) {
   const [selectedPrompts, setSelectedPrompts] = useState([]);
   const [teamMembers, setTeamMembers] = useState({});
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [teamName, setTeamName] = useState(""); // ✅ NEW: Store team name
-  
-  // AI Enhancement State
+  const [teamName, setTeamName] = useState("");
   const [showAIEnhancer, setShowAIEnhancer] = useState(false);
   const [currentPromptForAI, setCurrentPromptForAI] = useState(null);
 
-  // Pagination
   const pagination = usePagination(filteredPrompts, 10);
 
   // Load prompts from Firestore
@@ -82,7 +120,7 @@ export default function PromptList({ activeTeam, userRole }) {
     return () => unsub();
   }, [activeTeam]);
 
-  // ✅ NEW: Load team name
+  // Load team name
   useEffect(() => {
     async function loadTeamName() {
       if (!activeTeam) {
@@ -104,7 +142,7 @@ export default function PromptList({ activeTeam, userRole }) {
     loadTeamName();
   }, [activeTeam]);
 
-  // Load team member profiles for avatars
+  // Load team member profiles
   useEffect(() => {
     async function loadMembers() {
       if (!activeTeam) return;
@@ -137,12 +175,10 @@ export default function PromptList({ activeTeam, userRole }) {
     loadMembers();
   }, [activeTeam]);
 
-  // Handle filtered results from search
   function handleFilteredResults(filtered) {
     setFilteredPrompts(filtered);
   }
 
-  // Create new prompt
   async function handleCreate(e) {
     e.preventDefault();
     if (!newPrompt.title.trim() || !newPrompt.text.trim()) {
@@ -173,7 +209,6 @@ export default function PromptList({ activeTeam, userRole }) {
     }
   }
 
-  // Update existing prompt
   async function handleUpdate(promptId, updates) {
     try {
       await updatePrompt(activeTeam, promptId, updates);
@@ -186,12 +221,10 @@ export default function PromptList({ activeTeam, userRole }) {
     }
   }
 
-  // Delete prompt
   async function handleDelete(promptId) {
     const prompt = prompts.find((p) => p.id === promptId);
     if (!prompt) return;
 
-    // Check permissions
     if (
       prompt.createdBy !== user.uid &&
       userRole !== "owner" &&
@@ -212,7 +245,6 @@ export default function PromptList({ activeTeam, userRole }) {
     }
   }
 
-  // Copy prompt to clipboard
   async function handleCopy(text) {
     try {
       await navigator.clipboard.writeText(text);
@@ -223,7 +255,6 @@ export default function PromptList({ activeTeam, userRole }) {
     }
   }
 
-  // Toggle comments
   function toggleComments(promptId) {
     setShowComments((prev) => ({
       ...prev,
@@ -231,7 +262,6 @@ export default function PromptList({ activeTeam, userRole }) {
     }));
   }
 
-  // Bulk operations
   function handleSelectionChange(promptId, isSelected) {
     setSelectedPrompts((prev) =>
       isSelected ? [...prev, promptId] : prev.filter((id) => id !== promptId)
@@ -240,14 +270,9 @@ export default function PromptList({ activeTeam, userRole }) {
 
   async function handleBulkDelete(promptIds) {
     try {
-      await Promise.all(
-        promptIds.map((id) => deletePrompt(activeTeam, id))
-      );
+      await Promise.all(promptIds.map((id) => deletePrompt(activeTeam, id)));
       setSelectedPrompts([]);
-      showNotification(
-        `Deleted ${promptIds.length} prompts`,
-        "success"
-      );
+      showNotification(`Deleted ${promptIds.length} prompts`, "success");
     } catch (error) {
       console.error("Bulk delete error:", error);
       showNotification("Some prompts failed to delete", "error");
@@ -270,7 +295,6 @@ export default function PromptList({ activeTeam, userRole }) {
     showNotification(`Exported ${promptsToExport.length} prompts`, "success");
   }
 
-  // Import prompts
   async function handleImport(importedPrompts) {
     let successCount = 0;
     let failCount = 0;
@@ -287,19 +311,19 @@ export default function PromptList({ activeTeam, userRole }) {
 
     if (successCount > 0) {
       showNotification(
-        `Imported ${successCount} prompts${failCount > 0 ? `, ${failCount} failed` : ""}`,
+        `Imported ${successCount} prompts${
+          failCount > 0 ? `, ${failCount} failed` : ""
+        }`,
         successCount > failCount ? "success" : "error"
       );
     }
   }
 
-  // Handle AI Enhancement
   function handleAIEnhance(prompt) {
     setCurrentPromptForAI(prompt);
     setShowAIEnhancer(true);
   }
 
-  // Apply AI Enhanced Prompt
   async function handleApplyAIEnhancement(enhancedPrompt) {
     try {
       await updatePrompt(activeTeam, enhancedPrompt.id, {
@@ -315,7 +339,6 @@ export default function PromptList({ activeTeam, userRole }) {
     }
   }
 
-  // Save AI Enhanced as New Prompt
   async function handleSaveAIAsNew(enhancedPrompt) {
     try {
       await savePrompt(
@@ -336,14 +359,13 @@ export default function PromptList({ activeTeam, userRole }) {
     }
   }
 
-  // Notification helper
   function showNotification(message, type = "info") {
     const icons = {
       success: "✓",
       error: "✕",
-      info: "ℹ"
+      info: "ℹ",
     };
-    
+
     const notification = document.createElement("div");
     notification.innerHTML = `
       <div class="flex items-center gap-2">
@@ -369,7 +391,6 @@ export default function PromptList({ activeTeam, userRole }) {
     }, 3000);
   }
 
-  // Get user initials for avatar
   function getUserInitials(name, email) {
     if (name) {
       return name
@@ -385,7 +406,6 @@ export default function PromptList({ activeTeam, userRole }) {
     return "U";
   }
 
-  // User Avatar Component
   function UserAvatar({ src, name, email, size = "small", className = "" }) {
     const [imageError, setImageError] = useState(false);
     const avatarClass = size === "small" ? "w-8 h-8" : "w-10 h-10";
@@ -411,7 +431,6 @@ export default function PromptList({ activeTeam, userRole }) {
     );
   }
 
-  // Format date
   function formatDate(timestamp) {
     if (!timestamp) return "";
     try {
@@ -425,7 +444,6 @@ export default function PromptList({ activeTeam, userRole }) {
     }
   }
 
-  // Check if user can edit prompt
   function canEditPrompt(prompt) {
     return (
       prompt.createdBy === user.uid ||
@@ -434,42 +452,6 @@ export default function PromptList({ activeTeam, userRole }) {
     );
   }
 
-  // Proper SVG icon components
-  function Icon({ name, className = "w-5 h-5" }) {
-    const iconPaths = {
-      add: "M12 4v16m8-8H4",
-      close: "M6 18L18 6M6 6l12 12",
-      sparkles: "M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z",
-      copy: "M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z",
-      edit: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
-      trash: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
-      chevronUp: "M5 15l7-7 7 7",
-      chevronDown: "M19 9l-7 7-7-7",
-      document: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
-    };
-
-    const path = iconPaths[name];
-    if (!path) return null;
-
-    return (
-      <svg 
-        className={className} 
-        fill="none" 
-        stroke="currentColor" 
-        viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-          strokeWidth={2} 
-          d={path}
-        />
-      </svg>
-    );
-  }
-
-  // Loading state
   if (loading) {
     return (
       <div className="glass-card p-8 text-center">
@@ -626,7 +608,11 @@ export default function PromptList({ activeTeam, userRole }) {
       {/* Prompts List */}
       {pagination.currentItems.length === 0 ? (
         <div className="glass-card p-12 text-center">
-          <Icon name="document" className="mx-auto mb-4 w-16 h-16 opacity-50" />
+          <Icon
+            name="document"
+            className="mx-auto mb-4 w-16 h-16"
+            style={{ color: "var(--muted-foreground)" }}
+          />
           <h3
             className="text-lg font-semibold mb-2"
             style={{ color: "var(--foreground)" }}
@@ -662,7 +648,6 @@ export default function PromptList({ activeTeam, userRole }) {
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-start gap-3 flex-1">
-                    {/* Selection Checkbox */}
                     <PromptSelector
                       promptId={prompt.id}
                       isSelected={isSelected}
@@ -670,7 +655,6 @@ export default function PromptList({ activeTeam, userRole }) {
                       className="mt-1"
                     />
 
-                    {/* Author Avatar */}
                     <UserAvatar
                       src={author?.avatar}
                       name={author?.name}
@@ -678,7 +662,6 @@ export default function PromptList({ activeTeam, userRole }) {
                       className="mt-1"
                     />
 
-                    {/* Title and Meta */}
                     <div className="flex-1 min-w-0">
                       <h3
                         className="text-lg font-semibold mb-1"
@@ -690,7 +673,9 @@ export default function PromptList({ activeTeam, userRole }) {
                         className="flex items-center gap-3 text-xs flex-wrap"
                         style={{ color: "var(--muted-foreground)" }}
                       >
-                        <span>By {author?.name || author?.email || "Unknown"}</span>
+                        <span>
+                          By {author?.name || author?.email || "Unknown"}
+                        </span>
                         <span>•</span>
                         <span>{formatDate(prompt.createdAt)}</span>
                         <span>•</span>
@@ -701,15 +686,13 @@ export default function PromptList({ activeTeam, userRole }) {
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2 ml-4">
-                    {/* ✅ UPDATED: Pass teamName properly */}
                     <FavoriteButton
                       prompt={prompt}
                       teamId={activeTeam}
                       teamName={teamName}
                       size="small"
                     />
-                    
-                    {/* AI Enhance Button */}
+
                     <button
                       onClick={() => handleAIEnhance(prompt)}
                       className="p-2 rounded-lg transition-all duration-200 hover:scale-110"
@@ -719,7 +702,7 @@ export default function PromptList({ activeTeam, userRole }) {
                       }}
                       title="Enhance with AI"
                     >
-                      <Icon name="sparkles" />
+                      <Icon name="sparkles" className="w-5 h-5" />
                     </button>
 
                     <button
@@ -731,7 +714,7 @@ export default function PromptList({ activeTeam, userRole }) {
                       }}
                       title="Copy to clipboard"
                     >
-                      <Icon name="copy" />
+                      <Icon name="copy" className="w-5 h-5" />
                     </button>
 
                     {canEditPrompt(prompt) && (
@@ -748,7 +731,7 @@ export default function PromptList({ activeTeam, userRole }) {
                           }}
                           title="Edit prompt"
                         >
-                          <Icon name="edit" />
+                          <Icon name="edit" className="w-5 h-5" />
                         </button>
 
                         <button
@@ -760,7 +743,7 @@ export default function PromptList({ activeTeam, userRole }) {
                           }}
                           title="Delete prompt"
                         >
-                          <Icon name="trash" />
+                          <Icon name="trash" className="w-5 h-5" />
                         </button>
                       </>
                     )}
@@ -776,7 +759,10 @@ export default function PromptList({ activeTeam, userRole }) {
                       }}
                       title={isExpanded ? "Collapse" : "Expand"}
                     >
-                      <Icon name={isExpanded ? "chevronUp" : "chevronDown"} />
+                      <Icon
+                        name={isExpanded ? "chevronUp" : "chevronDown"}
+                        className="w-5 h-5"
+                      />
                     </button>
                   </div>
                 </div>
@@ -822,11 +808,12 @@ export default function PromptList({ activeTeam, userRole }) {
 
                 {/* Expanded Content */}
                 {isExpanded && (
-                  <div className="space-y-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
-                    {/* AI Model Analysis */}
+                  <div
+                    className="space-y-4 border-t pt-4"
+                    style={{ borderColor: "var(--border)" }}
+                  >
                     <CompactAITools text={prompt.text} />
 
-                    {/* Comments Toggle */}
                     <button
                       onClick={() => toggleComments(prompt.id)}
                       className="btn-secondary w-full py-2 text-sm"
@@ -834,7 +821,6 @@ export default function PromptList({ activeTeam, userRole }) {
                       {showComments[prompt.id] ? "Hide" : "Show"} Comments
                     </button>
 
-                    {/* Comments Section */}
                     {showComments[prompt.id] && (
                       <Comments
                         teamId={activeTeam}
